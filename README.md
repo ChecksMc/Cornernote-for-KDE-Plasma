@@ -86,7 +86,12 @@ This manual route works across Plasma versions.
   the editor. Settings collapse when the pointer leaves the overlay.
 - In the note body, Ctrl+1 inserts a level-one heading, Ctrl+B wraps text in
   bold markers, Ctrl+I wraps text in italic markers, and Ctrl+U wraps text in
-  an HTML underline tag.
+  an HTML underline tag. The H1/B/I/U toolbar applies the same formatting.
+  Headings, bold, italic, and underline appear styled while editing. Choose
+  **Preview** (Ctrl+P) for a rendered view with the Markdown markers hidden;
+  toggle it again to keep editing. Saving always preserves the Markdown.
+  Preview also renders lists, quotes, links, strikethrough, and fenced/inline
+  code. Other HTML and unsupported Markdown stay as text.
 - Escape opens an inline discard confirmation. Confirm with Y/Yes or cancel
   with N/No/Escape.
 - The gear button toggles between the editor and settings for the vault,
@@ -144,6 +149,8 @@ The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms
 - `src/style_editor.py` — standalone appearance editor and live preview
 - `src/ipc.py` — GLib-integrated Unix socket server and CLI client
 - `src/obsidian.py` — safe Markdown path selection and append writer
+- `src/markdown_render.py` — Markdown text and formatting ranges
+- `src/markdown_view.py` — GTK formatting for the editor and rendered views
 - `corner-note` — IPC command-line client
 - `install.sh` — multi-distro dependency and user installation
 - `uninstall.sh` — removes startup entries and launchers, optionally config

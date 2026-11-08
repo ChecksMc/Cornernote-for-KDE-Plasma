@@ -26,6 +26,8 @@ except (ImportError, ValueError) as exc:
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from ipc import start_server
+from markdown_render import render_markdown
+from markdown_view import apply_spans, make_view, show_markdown
 from obsidian import append_to_file, write_note
 from state import Mode, NoteState
 from style import CONFIG_PATH, build_css, load_config, save_config
@@ -318,6 +320,23 @@ class CornerNote(Gtk.Window):
         self.title_entry.connect("changed", self._on_title_changed)
         note_page.pack_start(self.title_entry, False, False, 3)
 
+        formatting = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        for label, tooltip, action in (
+                ("H1", "Heading · Ctrl+1", self._insert_heading_marker),
+                ("B", "Bold · Ctrl+B", lambda: self._wrap_selection("**")),
+                ("I", "Italic · Ctrl+I", lambda: self._wrap_selection("*")),
+                ("U", "Underline · Ctrl+U", lambda: self._wrap_selection("<u>", "</u>"))):
+            button = Gtk.Button(label=label)
+            button.set_focus_on_click(False)
+            button.set_tooltip_text(tooltip)
+            button.connect("clicked", lambda _button, callback=action: self._format_body(callback))
+            formatting.pack_start(button, False, False, 0)
+        self.preview_button = Gtk.ToggleButton(label="Preview")
+        self.preview_button.set_tooltip_text("Show rendered formatting · Ctrl+P")
+        self.preview_button.connect("toggled", self._on_preview_toggled)
+        formatting.pack_end(self.preview_button, False, False, 0)
+        note_page.pack_start(formatting, False, False, 0)
+
         self.content_buffer = Gtk.TextBuffer()
         self.content_view = Gtk.TextView(buffer=self.content_buffer)
         self.content_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
@@ -325,12 +344,23 @@ class CornerNote(Gtk.Window):
         self.content_view.set_right_margin(5)
         self.content_view.get_style_context().add_class("cn-content")
         self.content_buffer.connect("changed", self._sync_draft)
+        self.content_buffer.connect("changed", self._refresh_markdown)
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.set_shadow_type(Gtk.ShadowType.IN)
         scroller.set_min_content_height(60)
         scroller.add(self.content_view)
-        note_page.pack_start(scroller, True, True, 2)
+        self.body_stack = Gtk.Stack()
+        self.body_stack.set_hhomogeneous(False)
+        self.body_stack.set_vhomogeneous(False)
+        self.body_stack.add_named(scroller, "edit")
+        self.preview_view = make_view()
+        preview_scroll = Gtk.ScrolledWindow()
+        preview_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        preview_scroll.set_min_content_height(60)
+        preview_scroll.add(self.preview_view)
+        self.body_stack.add_named(preview_scroll, "preview")
+        note_page.pack_start(self.body_stack, True, True, 2)
 
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.date_mode_combo = Gtk.ComboBoxText()
@@ -584,7 +614,14 @@ class CornerNote(Gtk.Window):
     def _show_note_page(self) -> None:
         """Return to the note editor and restore the active editing focus."""
         self.page_stack.set_visible_child_name("note")
-        (self.content_view if self.state.mode == Mode.CONTENT else self.title_entry).grab_focus()
+        self._focus_editor()
+
+    def _focus_editor(self) -> None:
+        """Restore focus to the currently visible draft control."""
+        if self.state.mode == Mode.CONTENT:
+            (self.preview_view if self.preview_button.get_active() else self.content_view).grab_focus()
+        elif self.state.mode != Mode.DISCARD_CONFIRM:
+            self.title_entry.grab_focus()
 
     def _save_settings(self) -> bool:
         """Validate, persist, and close settings after a successful save."""
@@ -810,10 +847,40 @@ class CornerNote(Gtk.Window):
         self.date_entry.set_text("")
         self.folder_combo.set_active(0)
         self._set_append_mode(False)
+        self.preview_button.set_active(False)
+
+    def _refresh_markdown(self, *_args: Any) -> None:
+        """Style the editable source and update its rendered counterpart."""
+        source = self.content_buffer.get_text(*self.content_buffer.get_bounds(), True)
+        rendered = render_markdown(source)
+        apply_spans(self.content_buffer, rendered.source_spans)
+        show_markdown(self.preview_view.get_buffer(), source, rendered)
+
+    def _on_preview_toggled(self, button: Gtk.ToggleButton) -> None:
+        """Switch presentation without replacing the draft's Markdown buffer."""
+        preview = button.get_active()
+        self.body_stack.set_visible_child_name("preview" if preview else "edit")
+        if preview:
+            self._refresh_markdown()
+            self.preview_view.grab_focus()
+        else:
+            self.content_view.grab_focus()
+
+    def _toggle_preview(self) -> None:
+        if self.page_stack.get_visible_child_name() == "note":
+            self.preview_button.set_active(not self.preview_button.get_active())
+
+    def _format_body(self, callback: Any) -> None:
+        """Keep toolbar actions attached to the editable body and selection."""
+        self.preview_button.set_active(False)
+        self.state.begin_content()
+        self.content_view.grab_focus()
+        callback()
 
     def _on_title_enter(self, _entry: Any) -> None:
         """Move focus from title to body when Enter is pressed."""
         self.state.begin_content()
+        self.preview_button.set_active(False)
         self.content_view.grab_focus()
 
     def _on_enter(self, _widget: Any, event: Any) -> bool:
@@ -895,10 +962,7 @@ class CornerNote(Gtk.Window):
         self._animate_to(self.position_vertical_base)
         if not focus or self.page_stack.get_visible_child_name() == "settings":
             return
-        if self.state.mode == Mode.CONTENT:
-            self.content_view.grab_focus()
-        elif self.state.mode != Mode.DISCARD_CONFIRM:
-            self.title_entry.grab_focus()
+        self._focus_editor()
 
     def collapse(self) -> None:
         """Hide the overlay to its idle tab without changing the draft."""
@@ -939,6 +1003,9 @@ class CornerNote(Gtk.Window):
             return True
         if control and key in (Gdk.KEY_s, Gdk.KEY_S):
             self._toggle_settings()
+            return True
+        if control and key in (Gdk.KEY_p, Gdk.KEY_P):
+            self._toggle_preview()
             return True
         if control and shift and key in (Gdk.KEY_f, Gdk.KEY_F):
             self._open_search_mode()
@@ -982,6 +1049,7 @@ class CornerNote(Gtk.Window):
         shift = Gdk.ModifierType.SHIFT_MASK
         bindings: tuple[tuple[int, Gdk.ModifierType, Any], ...] = (
             (Gdk.KEY_s, control, self._toggle_settings),
+            (Gdk.KEY_p, control, self._toggle_preview),
             (Gdk.KEY_F, control | shift, self._open_search_mode),
             (Gdk.KEY_D, control | shift, self._open_date_menu),
             (Gdk.KEY_A, control | shift, self._toggle_append_mode),
@@ -1067,6 +1135,7 @@ class CornerNote(Gtk.Window):
                 self.title_entry.set_text(title)
                 self._set_append_mode(True)
                 self.state.begin_content()
+                self.preview_button.set_active(False)
                 self.content_view.grab_focus()
             chooser.destroy()
             if not self.pointer_inside and not self.state.forced_open:
@@ -1120,14 +1189,13 @@ class CornerNote(Gtk.Window):
             self.force_close()
         else:
             self.state.cancel_discard()
-            if self.state.mode == Mode.CONTENT:
-                self.content_view.grab_focus()
-            else:
-                self.title_entry.grab_focus()
+            self._focus_editor()
         self.dialog_box.hide()
 
     def commit_note(self) -> None:
         """Persist the current draft and clear it only after success."""
+        if self.page_stack.get_visible_child_name() != "note":
+            return
         self._sync_draft()
         draft = self.state.draft
         if not draft.has_content():

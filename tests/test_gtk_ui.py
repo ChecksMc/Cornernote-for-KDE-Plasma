@@ -97,6 +97,47 @@ class GtkUiTests(unittest.TestCase):
         self.settle()
         self.assertEqual(tuple(window.get_size()), (260, 200))
 
+    def test_rendered_formatting_preserves_markdown_and_saves_source(self):
+        window = self.make_window()
+        source = "# Heading\n**bold** and *italic* and <u>underlined</u>"
+        window.title_entry.set_text("Formatting")
+        window.content_buffer.set_text(source)
+        bold = window.content_buffer.get_tag_table().lookup("md-bold")
+        self.assertTrue(window.content_buffer.get_iter_at_offset(source.index("bold")).has_tag(bold))
+        window._toggle_preview()
+        self.assertEqual(window.body_stack.get_visible_child_name(), "preview")
+        preview = window.preview_view.get_buffer()
+        self.assertEqual(preview.get_text(*preview.get_bounds(), True),
+                         "Heading\nbold and italic and underlined")
+        self.assertEqual(window.state.draft.content, source)
+        window._toggle_preview()
+        self.assertEqual(window.content_buffer.get_text(*window.content_buffer.get_bounds(), True), source)
+        window._toggle_preview()
+        window.commit_note()
+        self.assertIn(source, (Path(self.temp.name) / "QuickNotes.md").read_text())
+        self.assertFalse(window.state.draft.has_content())
+
+    def test_toolbar_formats_selected_text_and_returns_from_preview(self):
+        window = self.make_window()
+        window.content_buffer.set_text("selected")
+        window.content_buffer.select_range(*window.content_buffer.get_bounds())
+        window._toggle_preview()
+        window._format_body(lambda: window._wrap_selection("**"))
+        self.assertEqual(window.body_stack.get_visible_child_name(), "edit")
+        self.assertEqual(window.content_buffer.get_text(*window.content_buffer.get_bounds(), True),
+                         "**selected**")
+
+    def test_failed_save_from_preview_preserves_draft(self):
+        window = self.make_window()
+        window.title_entry.set_text("Keep this draft")
+        window.content_buffer.set_text("**Keep this formatting**")
+        window._toggle_preview()
+        with patch.object(self.app, "write_note", side_effect=OSError("Disk unavailable")):
+            window.commit_note()
+        self.assertEqual(window.state.draft.content, "**Keep this formatting**")
+        self.assertEqual(window.body_stack.get_visible_child_name(), "preview")
+        self.assertIn("Disk unavailable", window.status_label.get_text())
+
 
 if __name__ == "__main__":
     unittest.main()
