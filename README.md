@@ -84,6 +84,12 @@ This manual route works across Plasma versions.
   to search for and append to an existing note in the vault.
 - Ctrl+S toggles settings. The gear button also closes settings and returns to
   the editor. Settings collapse when the pointer leaves the overlay.
+- **History** (Ctrl+H) browses the vault's latest 500 Markdown files, newest
+  first. Search by filename or relative path, then select a file to read its
+  formatted contents, including all appended entries. **Refresh** rescans the
+  vault. Escape returns from a file to the list, then to your draft; the
+  **Draft** button or Ctrl+H also returns to the editor. Browsing preserves
+  unfinished text and submission options, and works across restarts.
 - In the note body, Ctrl+1 inserts a level-one heading, Ctrl+B wraps text in
   bold markers, Ctrl+I wraps text in italic markers, and Ctrl+U wraps text in
   an HTML underline tag. The H1/B/I/U toolbar applies the same formatting.
@@ -151,6 +157,8 @@ The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms
 - `src/obsidian.py` — safe Markdown path selection and append writer
 - `src/markdown_render.py` — Markdown text and formatting ranges
 - `src/markdown_view.py` — GTK formatting for the editor and rendered views
+- `src/history.py` — saved vault note discovery and bounded read-only loading
+- `src/history_view.py` — searchable saved-note browser and formatted viewer
 - `corner-note` — IPC command-line client
 - `install.sh` — multi-distro dependency and user installation
 - `uninstall.sh` — removes startup entries and launchers, optionally config
