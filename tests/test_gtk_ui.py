@@ -78,6 +78,25 @@ class GtkUiTests(unittest.TestCase):
                 self.close_window()
                 self.window = None
 
+    def test_style_changes_restore_size_without_restarting(self):
+        window = self.make_window()
+        window.resize(700, 600)
+        self.settle()
+        for font_size in (28, 8, 11):
+            window._apply_style_config(dict(window.config, font_size=font_size))
+            self.settle()
+            self.assertEqual(tuple(window.get_size()), (380, 340))
+        window._show_settings()
+        window.setting_widgets["width"].set_value(260)
+        window.setting_widgets["height"].set_value(200)
+        self.assertTrue(window._save_settings())
+        self.settle()
+        self.assertEqual(tuple(window.get_size()), (260, 200))
+        self.assertEqual(window.idle_margin(), -192)
+        window._apply_style_config(dict(window.config, font_size=28))
+        self.settle()
+        self.assertEqual(tuple(window.get_size()), (260, 200))
+
 
 if __name__ == "__main__":
     unittest.main()

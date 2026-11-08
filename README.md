@@ -132,7 +132,8 @@ Plasma's `kdeglobals` palette, which CornerNote watches for changes. Text
 contrast is corrected when a selected palette would make note text hard to
 read. Settings also include independent note width and height controls. The
 configured dimensions stay fixed when fonts change; smaller notes scroll to
-keep oversized controls accessible.
+keep oversized controls accessible. Applying a style or saving dimensions
+resizes the current overlay immediately, without restarting the daemon.
 The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms.
 
 ## Files

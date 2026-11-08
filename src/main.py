@@ -613,11 +613,7 @@ class CornerNote(Gtk.Window):
             self.settings_status.set_text(f"Could not save settings: {exc}")
             return False
         self.config.update(new_config)
-        self.set_default_size(new_config["width"], new_config["height"])
-        self.set_size_request(new_config["width"], new_config["height"])
-        self.resize(new_config["width"], new_config["height"])
         self.settings_scroll.set_max_content_width(max(240, new_config["width"] - 16))
-        self._apply_position()
         self._refresh_folder_choices()
         self._refresh_css()
         self.settings_status.set_text("Settings saved.")
@@ -724,7 +720,16 @@ class CornerNote(Gtk.Window):
     def _refresh_css(self) -> bool:
         """Rebuild CSS from current theme configuration."""
         self.css_provider.load_from_data(build_css(self.config).encode("utf-8"))
+        self._apply_dimensions()
         return GLib.SOURCE_REMOVE
+
+    def _apply_dimensions(self) -> None:
+        """Reset GTK's remembered window size after live settings changes."""
+        width, height = self.config["width"], self.config["height"]
+        self.set_size_request(width, height)
+        self.set_default_size(width, height)
+        self.resize(width, height)
+        self._apply_position()
 
     def _install_css(self) -> None:
         """Install the initial theme on the default GDK screen."""
