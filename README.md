@@ -131,7 +131,9 @@ saved to `config.json` and applied to the overlay. By default, colors follow
 Plasma's `kdeglobals` palette, which CornerNote watches for changes. Text
 contrast is corrected when a selected palette would make note text hard to
 read. Settings also include independent note width and height controls. The
-hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms.
+configured dimensions stay fixed when fonts change; smaller notes scroll to
+keep oversized controls accessible.
+The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms.
 
 ## Files
 

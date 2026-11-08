@@ -305,10 +305,13 @@ class CornerNote(Gtk.Window):
 
         self.page_stack = Gtk.Stack()
         self.page_stack.set_transition_type(Gtk.StackTransitionType.NONE)
+        self.page_stack.set_hhomogeneous(False)
+        self.page_stack.set_vhomogeneous(False)
         root.pack_start(self.page_stack, True, True, 0)
         note_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
 
         self.title_entry = Gtk.Entry()
+        self.title_entry.set_width_chars(1)
         self.title_entry.set_placeholder_text("Title…  (Enter for body)")
         self.title_entry.get_style_context().add_class("cn-title")
         self.title_entry.connect("activate", self._on_title_enter)
@@ -325,6 +328,7 @@ class CornerNote(Gtk.Window):
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.set_shadow_type(Gtk.ShadowType.IN)
+        scroller.set_min_content_height(60)
         scroller.add(self.content_view)
         note_page.pack_start(scroller, True, True, 2)
 
@@ -337,11 +341,15 @@ class CornerNote(Gtk.Window):
         self.date_mode_combo.connect("notify::popup-shown", self._on_folder_popup)
         controls.pack_start(self.date_mode_combo, False, False, 0)
         self.date_entry = Gtk.Entry()
+        self.date_entry.set_width_chars(1)
         self.date_entry.set_placeholder_text("today / tomorrow / 14.10 / none")
         self.date_entry.get_style_context().add_class("cn-date-entry")
         self.date_entry.connect("changed", self._on_date_entry_changed)
         controls.pack_start(self.date_entry, True, True, 0)
         self.folder_combo = Gtk.ComboBoxText()
+        for renderer in self.folder_combo.get_cells():
+            renderer.set_property("max-width-chars", 12)
+            renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
         self.folder_combo.get_style_context().add_class("cn-folder")
         self.folder_combo.append_text("(root)")
         vault = Path(self.config["default_vault_path"])
@@ -370,6 +378,7 @@ class CornerNote(Gtk.Window):
 
         footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.status_label = Gtk.Label(xalign=0)
+        self.status_label.set_ellipsize(Pango.EllipsizeMode.END)
         self.status_label.get_style_context().add_class("cn-status")
         footer.pack_start(self.status_label, True, True, 0)
         self.save_button = Gtk.Button(label="[ Submit · Ctrl+Enter ]")
@@ -390,7 +399,15 @@ class CornerNote(Gtk.Window):
         note_page.pack_start(self.dialog_box, False, False, 0)
         self.page_stack.add_named(note_page, "note")
         self._build_settings_page()
-        self.add(root)
+        # Window size requests are minima in GTK. A viewport stops child/font
+        # requisitions from enlarging the layer surface beyond the saved size.
+        # Small notes can scroll to controls that do not fit in the viewport.
+        self.layout_scroll = Gtk.ScrolledWindow()
+        self.layout_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.layout_scroll.set_propagate_natural_width(False)
+        self.layout_scroll.set_propagate_natural_height(False)
+        self.layout_scroll.add(root)
+        self.add(self.layout_scroll)
 
     def _build_settings_page(self) -> None:
         """Construct the configuration editor page."""
@@ -408,7 +425,6 @@ class CornerNote(Gtk.Window):
         settings_scroll.set_max_content_width(max(240, int(self.config["width"]) - 16))
         self.settings_scroll = settings_scroll
         self.settings_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.settings_content.set_size_request(max(240, int(self.config["width"]) - 32), -1)
         self.settings_content.set_hexpand(True)
         settings_scroll.add(self.settings_content)
         page.pack_start(settings_scroll, True, True, 0)
@@ -600,7 +616,6 @@ class CornerNote(Gtk.Window):
         self.set_default_size(new_config["width"], new_config["height"])
         self.set_size_request(new_config["width"], new_config["height"])
         self.resize(new_config["width"], new_config["height"])
-        self.settings_content.set_size_request(max(240, new_config["width"] - 32), -1)
         self.settings_scroll.set_max_content_width(max(240, new_config["width"] - 16))
         self._apply_position()
         self._refresh_folder_choices()
