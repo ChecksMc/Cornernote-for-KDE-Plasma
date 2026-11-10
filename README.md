@@ -64,6 +64,46 @@ shortcut, open **System Settings → Shortcuts → Add New → Command or URL** 
 set the command to `corner-note toggle` with a shortcut such as Meta+N or F12.
 This manual route works across Plasma versions.
 
+## Updates
+
+Open settings and expand **Updates**. Choose **Check for updates**, then
+**Install update** when a newer revision is available. Checks and installation
+run in the background so the editor stays responsive.
+
+To enable automatic installation, select **Install updates automatically** and
+click **Save settings**. This saves `"auto_update": true` in the config and
+checks immediately, on subsequent daemon starts, and every six hours while
+the daemon runs. Available updates are installed automatically. The setting is
+off by default; no background network checks run while it is disabled. Manual
+checks remain available.
+
+The command-line client can also check and install updates while the daemon
+is stopped:
+
+```sh
+corner-note check-update
+corner-note update
+```
+
+Updates require Git and a CornerNote Git checkout on a branch with a configured
+upstream. The updater fetches that branch's upstream and installs only a
+fast-forward update. Installation refuses local changes, untracked files,
+local commits ahead of upstream, divergent history, or an unfinished Git
+operation. It never forces a reset and does not edit settings or vault files
+outside the checkout. ZIP installations cannot use the built-in updater;
+download the latest source and rerun `install.sh`, or switch to a Git clone.
+
+After installation, CornerNote keeps running with your current draft. To use
+the new version, save your note, then restart the daemon:
+
+```sh
+systemctl --user restart cornernote
+```
+
+For KDE login autostart installations, save your note, then log out and back
+in. Updates never restart the daemon automatically; restarting clears any
+unsaved in-memory draft.
+
 ## Use
 
 - Hover the exposed paper tab to open it. Moving the pointer away collapses it.
@@ -101,9 +141,9 @@ This manual route works across Plasma versions.
 - Escape opens an inline discard confirmation. Confirm with Y/Yes or cancel
   with N/No/Escape.
 - The gear button toggles between the editor and settings for the vault,
-  filename/date format, timing, tab peek, and appearance. Appearance changes
-  are saved with **Apply style**; **Save settings** saves the other settings
-  and returns to the editor.
+  filename/date format, timing, tab peek, appearance, and updates. Appearance
+  changes are saved with **Apply style**; **Save settings** saves the other
+  settings and returns to the editor.
 
 Collapsing the overlay never clears a draft. A draft is cleared only after a
 successful write or a confirmed discard. Write failures remain visible in the
@@ -134,8 +174,8 @@ The default vault path is `~/Documents`. Change it in settings to the root of
 your own Obsidian vault before saving notes.
 
 Settings are grouped into display and position, vault and files, animation,
-and appearance sections. Expand **Appearance and style** to open the embedded
-editor. It previews the style and offers Plasma colors, Pywal colors, ten
+appearance, and updates sections. Expand **Appearance and style** to open the
+embedded editor. It previews the style and offers Plasma colors, Pywal colors, ten
 built-in palettes, editable custom colors, installed font families and font
 size, a local image backdrop, and rounded paper corners. The selected style is
 saved to `config.json` and applied to the overlay. By default, colors follow
@@ -159,7 +199,9 @@ The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms
 - `src/markdown_view.py` — GTK formatting for the editor and rendered views
 - `src/history.py` — saved vault note discovery and bounded read-only loading
 - `src/history_view.py` — searchable saved-note browser and formatted viewer
-- `corner-note` — IPC command-line client
+- `src/updater.py` — Git upstream checks and fast-forward-only source updates
+- `src/update_view.py` — manual update controls and opt-in automatic installation
+- `corner-note` — IPC command-line client and standalone update commands
 - `install.sh` — multi-distro dependency and user installation
 - `uninstall.sh` — removes startup entries and launchers, optionally config
 - `packaging/bundle.py` — builds a distributable `CornerNote.zip`

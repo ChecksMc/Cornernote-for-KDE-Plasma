@@ -13,8 +13,8 @@ Run the headless smoke tests with pytest:
 python3 -m pytest tests/
 ```
 
-GTK layout and interaction tests are optional and use a separate test display.
-For example, start GTK's Broadway backend in one terminal:
+GTK update integration tests are optional and use a separate test display.
+Start GTK's Broadway backend in one terminal:
 
 ```sh
 broadwayd --address=127.0.0.1 --port=8085 :5

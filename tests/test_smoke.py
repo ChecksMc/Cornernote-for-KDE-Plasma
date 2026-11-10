@@ -108,5 +108,15 @@ class IpcPathTests(unittest.TestCase):
                 client.sendall.assert_called_once_with(b"toggle\n")
 
 
+class UpdateConfigTests(unittest.TestCase):
+    def test_automatic_updates_require_explicit_boolean_opt_in(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.json"
+            self.assertIs(style.load_config(path)["auto_update"], False)
+            for value in ('"true"', '1', 'null', 'true', 'false'):
+                path.write_text('{"auto_update": ' + value + '}')
+                self.assertIs(style.load_config(path)["auto_update"], value == 'true')
+
+
 if __name__ == "__main__":
     unittest.main()
