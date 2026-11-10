@@ -1,62 +1,19 @@
-# v0.1.0 — Initial public release
+# Unreleased
 
-CornerNote is a GTK 3 quick-note overlay for KDE Plasma on Wayland. It keeps a
-draft in memory while collapsed and appends notes to Markdown files in an
-Obsidian vault.
+## Added
 
-## Requirements
+- An **Updates** settings section with manual checks and installation, plus
+  opt-in automatic installation at startup and every six hours. Automatic
+  updates are off by default and enabled with **Save settings**. The
+  `corner-note check-update` and `corner-note update` commands also work while
+  the daemon is stopped. Updates use the current Git branch's configured
+  upstream, require a clean checkout, and only fast-forward. The daemon keeps
+  running after installation so a draft can be saved before restarting.
+- Headless updater regressions using local Git remotes and optional isolated
+  GTK update tests; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-- Fedora KDE Plasma running a Wayland session
-- Python 3, PyGObject, GTK 3, Cairo, and gtk-layer-shell
-- An Obsidian vault writable by your user
+## Limitations
 
-On Fedora, install the system packages with:
-
-```sh
-sudo dnf install python3 python3-gobject python3-cairo gtk-layer-shell
-```
-
-## Known limitations
-
-- KWin's `wlr-layer-shell` implementation has known quirks: overlay surfaces
-  may not suppress fullscreen windows on all Plasma versions, and behavior may
-  differ between Plasma 5.x and 6.x. See the [KDE bug tracker query for
-  `wlr-layer-shell`](https://bugs.kde.org/buglist.cgi?quicksearch=wlr-layer-shell).
-- GTK 3 is in maintenance mode; a GTK 4 or Qt port is a long-term consideration.
-- X11 is unsupported.
-
-## Known Issues
-
-**Overlay disappears after suspend/resume**
-On some systems the layer-shell surface is not automatically recreated after
-waking from suspend. The service continues running normally but the overlay
-is no longer visible. Workaround until this is resolved:
-
-```bash
-    systemctl --user restart cornernote
-```
-
-This is a Wayland compositor surface lifecycle issue and may affect other
-layer-shell applications on the same setup. Multi-monitor and hybrid GPU
-configurations appear more likely to trigger it.
-
-## Install
-
-```sh
-./install.sh
-```
-
-The installer checks dependencies, installs a user-level launcher and systemd
-service, copies `config.example.json` to
-`~/.config/cornernote/config.json` if no config exists, and enables the service
-for the graphical session. Start it with `systemctl --user start cornernote`.
-The service uses the current checkout, so keep this repository in place after
-installing.
-
-Remove the service and launchers with `./uninstall.sh`. This preserves your
-settings by default; use `./uninstall.sh --purge-config` to delete them too.
-
-Use `corner-note toggle` to open or close CornerNote. To bind a KDE global
-shortcut, open **System Settings → Shortcuts → Add New → Command or URL** and
-set the command to `corner-note toggle` with a shortcut such as Meta+N or F12.
-This manual route works across Plasma versions.
+- Built-in updates require Git and a source checkout with a configured upstream;
+  ZIP installations need a fresh download and reinstall. Local changes,
+  untracked files, or local/divergent commits must be resolved before updating.

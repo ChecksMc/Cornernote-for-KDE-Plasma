@@ -28,6 +28,7 @@ DEFAULTS: Config = {
     "theme_fallback": "catppuccin_mocha",
     "background_image": "",
     "rounded_corners": False,
+    "auto_update": False,
     "custom_palette": {"background": "#1e1e2e", "foreground": "#cdd6f4",
                        "accent": "#89b4fa", "muted": "#6c7086", "card": "#313244"},
     "folders": [],
@@ -121,6 +122,8 @@ def load_config(path: str | Path | None = None) -> Config:
         config["background_image"] = ""
     if not isinstance(config.get("rounded_corners"), bool):
         config["rounded_corners"] = False
+    if not isinstance(config.get("auto_update"), bool):
+        config["auto_update"] = False
     for key in ("width", "height", "font_size", "anim_ms"):
         config[key] = int(config[key])
         if config[key] <= 0:

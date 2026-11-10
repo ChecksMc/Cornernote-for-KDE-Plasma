@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Send a toggle command to the running CornerNote daemon."""
+"""Toggle the CornerNote daemon or check and install source updates."""
 
 import argparse
 import os
@@ -9,13 +9,32 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from ipc import send_command
 from style import CONFIG_PATH, load_config
+from updater import UpdateError, check_for_updates, install_update
 
 
 def main() -> int:
-    """Parse the toggle command and contact the running daemon."""
-    parser = argparse.ArgumentParser(prog="corner-note", description="Toggle the CornerNote overlay")
-    parser.add_argument("command", nargs="?", choices=("toggle",), default="toggle")
+    """Run updates independently of the daemon, or send its toggle command."""
+    parser = argparse.ArgumentParser(prog="corner-note", description="Control and update CornerNote")
+    parser.add_argument("command", nargs="?", choices=("toggle", "check-update", "update"),
+                        default="toggle")
     args = parser.parse_args()
+    if args.command != "toggle":
+        try:
+            info = check_for_updates()
+            if not info.available:
+                print(f"CornerNote is up to date on {info.branch} ({info.current_revision[:8]}).")
+            elif args.command == "check-update":
+                print(f"Update available on {info.branch}: {info.current_revision[:8]} → "
+                      f"{info.target_revision[:8]}. Run: corner-note update")
+            else:
+                install_update(info)
+                print("Update installed. Save any draft, then restart CornerNote.\n"
+                      "For systemd installations: systemctl --user restart cornernote\n"
+                      "For login autostart: log out and back in.")
+        except (UpdateError, OSError, ValueError) as exc:
+            print(f"corner-note: {exc}", file=sys.stderr)
+            return 1
+        return 0
     try:
         config = load_config(os.environ.get("CORNERNOTE_CONFIG", CONFIG_PATH))
         send_command(config["socket_path"], args.command)
