@@ -13,6 +13,23 @@ Run the headless smoke tests with pytest:
 python3 -m pytest tests/
 ```
 
+GTK update integration tests are optional and use a separate test display.
+Start GTK's Broadway backend in one terminal:
+
+```sh
+broadwayd --address=127.0.0.1 --port=8085 :5
+```
+
+Then run the GTK tests from another terminal:
+
+```sh
+GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 CORNERNOTE_GTK_TESTS=1 python3 -m pytest tests/test_update_gtk.py
+```
+
+These tests replace layer-shell and update operations to verify settings,
+background updates, and draft preservation without contacting a remote or the
+running CornerNote daemon.
+
 The source modules are:
 
 - `src/main.py` — GTK layer-shell overlay and daemon entry point.

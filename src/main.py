@@ -30,6 +30,7 @@ from obsidian import append_to_file, write_note
 from state import Mode, NoteState
 from style import CONFIG_PATH, build_css, load_config, save_config
 from style_editor import StyleEditor
+from update_view import UpdatePanel
 
 Config = dict[str, Any]
 
@@ -93,6 +94,7 @@ class CornerNote(Gtk.Window):
         self.status_label.hide()
         self._watch_theme_files()
         self._clock_source = GLib.timeout_add_seconds(30, self._refresh_clock)
+        self.update_panel.configure(self.config.get("auto_update", False))
 
     def watch_suspend_resume(self) -> None:
         """Subscribe to logind sleep notifications and restore the layer surface."""
@@ -496,6 +498,11 @@ class CornerNote(Gtk.Window):
         self.appearance_expander.add(self.style_editor)
         self.settings_content.pack_start(self.appearance_expander, False, False, 0)
 
+        updates = Gtk.Expander(label="Updates")
+        self.update_panel = UpdatePanel(self._show_status)
+        updates.add(self.update_panel)
+        self.settings_content.pack_start(updates, False, False, 0)
+
         actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.settings_status = Gtk.Label(xalign=0)
         self.settings_status.get_style_context().add_class("cn-status")
@@ -534,6 +541,7 @@ class CornerNote(Gtk.Window):
         fields["offset_y"].set_value(self.config.get("offset_y", 0))
         fields["width"].set_value(self.config["width"])
         fields["height"].set_value(self.config["height"])
+        self.update_panel.auto_install.set_active(self.config.get("auto_update", False))
         self._update_y_offset_limits()
         self.settings_status.set_text("")
         self.page_stack.set_visible_child_name("settings")
@@ -587,6 +595,7 @@ class CornerNote(Gtk.Window):
         new_config["offset_y"] = fields["offset_y"].get_value_as_int()
         new_config["width"] = fields["width"].get_value_as_int()
         new_config["height"] = fields["height"].get_value_as_int()
+        new_config["auto_update"] = self.update_panel.auto_install.get_active()
         new_config["monitor"] = fields["monitor"].get_active_id() or "primary"
         if not new_config["default_vault_path"] or not new_config["note_filename"].endswith(".md"):
             self.settings_status.set_text("Enter a vault path and a .md filename.")
@@ -597,6 +606,7 @@ class CornerNote(Gtk.Window):
             self.settings_status.set_text(f"Could not save settings: {exc}")
             return False
         self.config.update(new_config)
+        self.update_panel.configure(new_config["auto_update"])
         self.set_default_size(new_config["width"], new_config["height"])
         self.set_size_request(new_config["width"], new_config["height"])
         self.resize(new_config["width"], new_config["height"])
