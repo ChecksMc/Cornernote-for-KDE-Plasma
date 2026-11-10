@@ -26,6 +26,9 @@ except (ImportError, ValueError) as exc:
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from ipc import start_server
+from history_view import HistoryPage
+from markdown_render import render_markdown
+from markdown_view import apply_spans, make_view, show_markdown
 from obsidian import append_to_file, write_note
 from state import Mode, NoteState
 from style import CONFIG_PATH, build_css, load_config, save_config
@@ -90,6 +93,7 @@ class CornerNote(Gtk.Window):
             display.connect("monitor-added", self._on_monitors_changed)
             display.connect("monitor-removed", self._on_monitors_changed)
         self.show_all()
+        self.page_stack.set_visible_child_name("note")
         self.dialog_box.hide()
         self.status_label.hide()
         self._watch_theme_files()
@@ -299,6 +303,10 @@ class CornerNote(Gtk.Window):
         self.settings_button.set_tooltip_text("CornerNote settings")
         self.settings_button.connect("clicked", lambda *_: self._toggle_settings())
         header.pack_end(self.settings_button, False, False, 4)
+        self.history_button = Gtk.Button(label="History")
+        self.history_button.set_tooltip_text("Browse saved notes · Ctrl+H")
+        self.history_button.connect("clicked", lambda *_: self._toggle_history())
+        header.pack_end(self.history_button, False, False, 2)
         root.pack_start(header, False, False, 0)
 
         separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
@@ -307,15 +315,35 @@ class CornerNote(Gtk.Window):
 
         self.page_stack = Gtk.Stack()
         self.page_stack.set_transition_type(Gtk.StackTransitionType.NONE)
+        self.page_stack.set_hhomogeneous(False)
+        self.page_stack.set_vhomogeneous(False)
         root.pack_start(self.page_stack, True, True, 0)
         note_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
 
         self.title_entry = Gtk.Entry()
+        self.title_entry.set_width_chars(1)
         self.title_entry.set_placeholder_text("Title…  (Enter for body)")
         self.title_entry.get_style_context().add_class("cn-title")
         self.title_entry.connect("activate", self._on_title_enter)
         self.title_entry.connect("changed", self._on_title_changed)
         note_page.pack_start(self.title_entry, False, False, 3)
+
+        formatting = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        for label, tooltip, action in (
+                ("H1", "Heading · Ctrl+1", self._insert_heading_marker),
+                ("B", "Bold · Ctrl+B", lambda: self._wrap_selection("**")),
+                ("I", "Italic · Ctrl+I", lambda: self._wrap_selection("*")),
+                ("U", "Underline · Ctrl+U", lambda: self._wrap_selection("<u>", "</u>"))):
+            button = Gtk.Button(label=label)
+            button.set_focus_on_click(False)
+            button.set_tooltip_text(tooltip)
+            button.connect("clicked", lambda _button, callback=action: self._format_body(callback))
+            formatting.pack_start(button, False, False, 0)
+        self.preview_button = Gtk.ToggleButton(label="Preview")
+        self.preview_button.set_tooltip_text("Show rendered formatting · Ctrl+P")
+        self.preview_button.connect("toggled", self._on_preview_toggled)
+        formatting.pack_end(self.preview_button, False, False, 0)
+        note_page.pack_start(formatting, False, False, 0)
 
         self.content_buffer = Gtk.TextBuffer()
         self.content_view = Gtk.TextView(buffer=self.content_buffer)
@@ -324,11 +352,23 @@ class CornerNote(Gtk.Window):
         self.content_view.set_right_margin(5)
         self.content_view.get_style_context().add_class("cn-content")
         self.content_buffer.connect("changed", self._sync_draft)
+        self.content_buffer.connect("changed", self._refresh_markdown)
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.set_shadow_type(Gtk.ShadowType.IN)
+        scroller.set_min_content_height(60)
         scroller.add(self.content_view)
-        note_page.pack_start(scroller, True, True, 2)
+        self.body_stack = Gtk.Stack()
+        self.body_stack.set_hhomogeneous(False)
+        self.body_stack.set_vhomogeneous(False)
+        self.body_stack.add_named(scroller, "edit")
+        self.preview_view = make_view()
+        preview_scroll = Gtk.ScrolledWindow()
+        preview_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        preview_scroll.set_min_content_height(60)
+        preview_scroll.add(self.preview_view)
+        self.body_stack.add_named(preview_scroll, "preview")
+        note_page.pack_start(self.body_stack, True, True, 2)
 
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.date_mode_combo = Gtk.ComboBoxText()
@@ -339,11 +379,15 @@ class CornerNote(Gtk.Window):
         self.date_mode_combo.connect("notify::popup-shown", self._on_folder_popup)
         controls.pack_start(self.date_mode_combo, False, False, 0)
         self.date_entry = Gtk.Entry()
+        self.date_entry.set_width_chars(1)
         self.date_entry.set_placeholder_text("today / tomorrow / 14.10 / none")
         self.date_entry.get_style_context().add_class("cn-date-entry")
         self.date_entry.connect("changed", self._on_date_entry_changed)
         controls.pack_start(self.date_entry, True, True, 0)
         self.folder_combo = Gtk.ComboBoxText()
+        for renderer in self.folder_combo.get_cells():
+            renderer.set_property("max-width-chars", 12)
+            renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
         self.folder_combo.get_style_context().add_class("cn-folder")
         self.folder_combo.append_text("(root)")
         vault = Path(self.config["default_vault_path"])
@@ -372,6 +416,7 @@ class CornerNote(Gtk.Window):
 
         footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.status_label = Gtk.Label(xalign=0)
+        self.status_label.set_ellipsize(Pango.EllipsizeMode.END)
         self.status_label.get_style_context().add_class("cn-status")
         footer.pack_start(self.status_label, True, True, 0)
         self.save_button = Gtk.Button(label="[ Submit · Ctrl+Enter ]")
@@ -392,7 +437,17 @@ class CornerNote(Gtk.Window):
         note_page.pack_start(self.dialog_box, False, False, 0)
         self.page_stack.add_named(note_page, "note")
         self._build_settings_page()
-        self.add(root)
+        self.history_page = HistoryPage()
+        self.page_stack.add_named(self.history_page, "history")
+        # Window size requests are minima in GTK. A viewport stops child/font
+        # requisitions from enlarging the layer surface beyond the saved size.
+        # Small notes can scroll to controls that do not fit in the viewport.
+        self.layout_scroll = Gtk.ScrolledWindow()
+        self.layout_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.layout_scroll.set_propagate_natural_width(False)
+        self.layout_scroll.set_propagate_natural_height(False)
+        self.layout_scroll.add(root)
+        self.add(self.layout_scroll)
 
     def _build_settings_page(self) -> None:
         """Construct the configuration editor page."""
@@ -410,7 +465,6 @@ class CornerNote(Gtk.Window):
         settings_scroll.set_max_content_width(max(240, int(self.config["width"]) - 16))
         self.settings_scroll = settings_scroll
         self.settings_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.settings_content.set_size_request(max(240, int(self.config["width"]) - 32), -1)
         self.settings_content.set_hexpand(True)
         settings_scroll.add(self.settings_content)
         page.pack_start(settings_scroll, True, True, 0)
@@ -522,6 +576,8 @@ class CornerNote(Gtk.Window):
 
     def _show_settings(self) -> None:
         """Populate setting controls from the active configuration."""
+        self.history_button.set_label("History")
+        self.history_button.set_tooltip_text("Browse saved notes · Ctrl+H")
         self.style_editor.set_config(self.config)
         fields = self.setting_widgets
         self._populate_monitor_choices()
@@ -554,6 +610,19 @@ class CornerNote(Gtk.Window):
         else:
             self._show_settings()
 
+    def _toggle_history(self) -> None:
+        """Browse vault notes while retaining all editable draft fields."""
+        if self.state.mode == Mode.DISCARD_CONFIRM:
+            return
+        if self.page_stack.get_visible_child_name() == "history":
+            self._show_note_page()
+            return
+        self.page_stack.set_visible_child_name("history")
+        self.history_button.set_label("Draft")
+        self.history_button.set_tooltip_text("Return to current draft · Ctrl+H")
+        self.history_page.open(self.config)
+        self.history_page.search_entry.grab_focus()
+
     def _update_y_offset_limits(self) -> None:
         """Limit outward vertical adjustment so an idle tab remains visible."""
         fields = getattr(self, "setting_widgets", {})
@@ -576,7 +645,16 @@ class CornerNote(Gtk.Window):
     def _show_note_page(self) -> None:
         """Return to the note editor and restore the active editing focus."""
         self.page_stack.set_visible_child_name("note")
-        (self.content_view if self.state.mode == Mode.CONTENT else self.title_entry).grab_focus()
+        self.history_button.set_label("History")
+        self.history_button.set_tooltip_text("Browse saved notes · Ctrl+H")
+        self._focus_editor()
+
+    def _focus_editor(self) -> None:
+        """Restore focus to the currently visible draft control."""
+        if self.state.mode == Mode.CONTENT:
+            (self.preview_view if self.preview_button.get_active() else self.content_view).grab_focus()
+        elif self.state.mode != Mode.DISCARD_CONFIRM:
+            self.title_entry.grab_focus()
 
     def _save_settings(self) -> bool:
         """Validate, persist, and close settings after a successful save."""
@@ -612,7 +690,6 @@ class CornerNote(Gtk.Window):
         self.resize(new_config["width"], new_config["height"])
         self.settings_content.set_size_request(max(240, new_config["width"] - 32), -1)
         self.settings_scroll.set_max_content_width(max(240, new_config["width"] - 16))
-        self._apply_position()
         self._refresh_folder_choices()
         self._refresh_css()
         self.settings_status.set_text("Settings saved.")
@@ -719,7 +796,16 @@ class CornerNote(Gtk.Window):
     def _refresh_css(self) -> bool:
         """Rebuild CSS from current theme configuration."""
         self.css_provider.load_from_data(build_css(self.config).encode("utf-8"))
+        self._apply_dimensions()
         return GLib.SOURCE_REMOVE
+
+    def _apply_dimensions(self) -> None:
+        """Reset GTK's remembered window size after live settings changes."""
+        width, height = self.config["width"], self.config["height"]
+        self.set_size_request(width, height)
+        self.set_default_size(width, height)
+        self.resize(width, height)
+        self._apply_position()
 
     def _install_css(self) -> None:
         """Install the initial theme on the default GDK screen."""
@@ -800,10 +886,40 @@ class CornerNote(Gtk.Window):
         self.date_entry.set_text("")
         self.folder_combo.set_active(0)
         self._set_append_mode(False)
+        self.preview_button.set_active(False)
+
+    def _refresh_markdown(self, *_args: Any) -> None:
+        """Style the editable source and update its rendered counterpart."""
+        source = self.content_buffer.get_text(*self.content_buffer.get_bounds(), True)
+        rendered = render_markdown(source)
+        apply_spans(self.content_buffer, rendered.source_spans)
+        show_markdown(self.preview_view.get_buffer(), source, rendered)
+
+    def _on_preview_toggled(self, button: Gtk.ToggleButton) -> None:
+        """Switch presentation without replacing the draft's Markdown buffer."""
+        preview = button.get_active()
+        self.body_stack.set_visible_child_name("preview" if preview else "edit")
+        if preview:
+            self._refresh_markdown()
+            self.preview_view.grab_focus()
+        else:
+            self.content_view.grab_focus()
+
+    def _toggle_preview(self) -> None:
+        if self.page_stack.get_visible_child_name() == "note":
+            self.preview_button.set_active(not self.preview_button.get_active())
+
+    def _format_body(self, callback: Any) -> None:
+        """Keep toolbar actions attached to the editable body and selection."""
+        self.preview_button.set_active(False)
+        self.state.begin_content()
+        self.content_view.grab_focus()
+        callback()
 
     def _on_title_enter(self, _entry: Any) -> None:
         """Move focus from title to body when Enter is pressed."""
         self.state.begin_content()
+        self.preview_button.set_active(False)
         self.content_view.grab_focus()
 
     def _on_enter(self, _widget: Any, event: Any) -> bool:
@@ -885,10 +1001,12 @@ class CornerNote(Gtk.Window):
         self._animate_to(self.position_vertical_base)
         if not focus or self.page_stack.get_visible_child_name() == "settings":
             return
-        if self.state.mode == Mode.CONTENT:
-            self.content_view.grab_focus()
-        elif self.state.mode != Mode.DISCARD_CONFIRM:
-            self.title_entry.grab_focus()
+        if self.page_stack.get_visible_child_name() == "history":
+            page = self.history_page
+            (page.viewer if page.stack.get_visible_child_name() == "detail"
+             else page.search_entry).grab_focus()
+            return
+        self._focus_editor()
 
     def collapse(self) -> None:
         """Hide the overlay to its idle tab without changing the draft."""
@@ -930,6 +1048,12 @@ class CornerNote(Gtk.Window):
         if control and key in (Gdk.KEY_s, Gdk.KEY_S):
             self._toggle_settings()
             return True
+        if control and key in (Gdk.KEY_p, Gdk.KEY_P):
+            self._toggle_preview()
+            return True
+        if control and key in (Gdk.KEY_h, Gdk.KEY_H):
+            self._toggle_history()
+            return True
         if control and shift and key in (Gdk.KEY_f, Gdk.KEY_F):
             self._open_search_mode()
             return True
@@ -960,6 +1084,10 @@ class CornerNote(Gtk.Window):
             self._wrap_if_editing("<u>", "</u>")
             return self._body_has_focus()
         if key == Gdk.KEY_Escape:
+            if self.page_stack.get_visible_child_name() == "history":
+                if not self.history_page.go_back():
+                    self._show_note_page()
+                return True
             self._open_discard_prompt()
             return True
         return False
@@ -972,6 +1100,8 @@ class CornerNote(Gtk.Window):
         shift = Gdk.ModifierType.SHIFT_MASK
         bindings: tuple[tuple[int, Gdk.ModifierType, Any], ...] = (
             (Gdk.KEY_s, control, self._toggle_settings),
+            (Gdk.KEY_p, control, self._toggle_preview),
+            (Gdk.KEY_h, control, self._toggle_history),
             (Gdk.KEY_F, control | shift, self._open_search_mode),
             (Gdk.KEY_D, control | shift, self._open_date_menu),
             (Gdk.KEY_A, control | shift, self._toggle_append_mode),
@@ -998,15 +1128,21 @@ class CornerNote(Gtk.Window):
 
     def _open_date_menu(self) -> None:
         """Focus and open the date selection menu."""
+        if self.page_stack.get_visible_child_name() != "note":
+            return
         self.date_mode_combo.grab_focus()
         self.date_mode_combo.popup()
 
     def _toggle_append_mode(self) -> None:
         """Toggle append mode from its keyboard shortcut."""
+        if self.page_stack.get_visible_child_name() != "note":
+            return
         self._set_append_mode(not self.append_mode_check.get_active())
 
     def _toggle_date_mode(self) -> None:
         """Toggle between today's date and no date."""
+        if self.page_stack.get_visible_child_name() != "note":
+            return
         set_no_date = self.date_mode_combo.get_active_id() != "none"
         self.date_mode_combo.set_active_id("none" if set_no_date else "date")
         if not set_no_date and self.date_entry.get_text().strip().casefold() == "none":
@@ -1029,6 +1165,8 @@ class CornerNote(Gtk.Window):
 
     def _open_search_mode(self) -> None:
         """Show a Markdown-only picker for selecting an existing vault note."""
+        if self.page_stack.get_visible_child_name() != "note":
+            return
         vault = Path(self.config["default_vault_path"]).expanduser()
         dialog = Gtk.FileChooserDialog(
             title="Search Markdown notes", parent=self,
@@ -1057,6 +1195,7 @@ class CornerNote(Gtk.Window):
                 self.title_entry.set_text(title)
                 self._set_append_mode(True)
                 self.state.begin_content()
+                self.preview_button.set_active(False)
                 self.content_view.grab_focus()
             chooser.destroy()
             if not self.pointer_inside and not self.state.forced_open:
@@ -1110,14 +1249,13 @@ class CornerNote(Gtk.Window):
             self.force_close()
         else:
             self.state.cancel_discard()
-            if self.state.mode == Mode.CONTENT:
-                self.content_view.grab_focus()
-            else:
-                self.title_entry.grab_focus()
+            self._focus_editor()
         self.dialog_box.hide()
 
     def commit_note(self) -> None:
         """Persist the current draft and clear it only after success."""
+        if self.page_stack.get_visible_child_name() != "note":
+            return
         self._sync_draft()
         draft = self.state.draft
         if not draft.has_content():

@@ -124,9 +124,20 @@ unsaved in-memory draft.
   to search for and append to an existing note in the vault.
 - Ctrl+S toggles settings. The gear button also closes settings and returns to
   the editor. Settings collapse when the pointer leaves the overlay.
+- **History** (Ctrl+H) browses the vault's latest 500 Markdown files, newest
+  first. Search by filename or relative path, then select a file to read its
+  formatted contents, including all appended entries. **Refresh** rescans the
+  vault. Escape returns from a file to the list, then to your draft; the
+  **Draft** button or Ctrl+H also returns to the editor. Browsing preserves
+  unfinished text and submission options, and works across restarts.
 - In the note body, Ctrl+1 inserts a level-one heading, Ctrl+B wraps text in
   bold markers, Ctrl+I wraps text in italic markers, and Ctrl+U wraps text in
-  an HTML underline tag.
+  an HTML underline tag. The H1/B/I/U toolbar applies the same formatting.
+  Headings, bold, italic, and underline appear styled while editing. Choose
+  **Preview** (Ctrl+P) for a rendered view with the Markdown markers hidden;
+  toggle it again to keep editing. Saving always preserves the Markdown.
+  Preview also renders lists, quotes, links, strikethrough, and fenced/inline
+  code. Other HTML and unsupported Markdown stay as text.
 - Escape opens an inline discard confirmation. Confirm with Y/Yes or cancel
   with N/No/Escape.
 - The gear button toggles between the editor and settings for the vault,
@@ -171,7 +182,10 @@ saved to `config.json` and applied to the overlay. By default, colors follow
 Plasma's `kdeglobals` palette, which CornerNote watches for changes. Text
 contrast is corrected when a selected palette would make note text hard to
 read. Settings also include independent note width and height controls. The
-hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms.
+configured dimensions stay fixed when fonts change; smaller notes scroll to
+keep oversized controls accessible. Applying a style or saving dimensions
+resizes the current overlay immediately, without restarting the daemon.
+The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms.
 
 ## Files
 
@@ -181,6 +195,10 @@ hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms.
 - `src/style_editor.py` — standalone appearance editor and live preview
 - `src/ipc.py` — GLib-integrated Unix socket server and CLI client
 - `src/obsidian.py` — safe Markdown path selection and append writer
+- `src/markdown_render.py` — Markdown text and formatting ranges
+- `src/markdown_view.py` — GTK formatting for the editor and rendered views
+- `src/history.py` — saved vault note discovery and bounded read-only loading
+- `src/history_view.py` — searchable saved-note browser and formatted viewer
 - `src/updater.py` — Git upstream checks and fast-forward-only source updates
 - `src/update_view.py` — manual update controls and opt-in automatic installation
 - `corner-note` — IPC command-line client and standalone update commands
