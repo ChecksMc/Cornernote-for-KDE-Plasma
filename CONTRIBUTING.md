@@ -36,6 +36,7 @@ The source modules are:
 - `src/obsidian.py` — Markdown path selection and append writer.
 - `src/ipc.py` — GLib-integrated Unix socket server and client.
 - `src/style.py` — configuration, palette loading, and GTK CSS.
+- `src/settings_view.py` — settings controls, monitor choices, and vault folder picker.
 - `src/style_editor.py` — appearance editor and live preview.
 
 To contribute, fork the repository, create a branch, make and test your

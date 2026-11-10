@@ -78,7 +78,7 @@ class GtkUiTests(unittest.TestCase):
                 window = self.make_window(font_size=size, width=width, height=height)
                 self.assertEqual(tuple(window.get_size()), (width, height))
                 window._show_settings()
-                window.appearance_expander.set_expanded(True)
+                window.settings_page.appearance_expander.set_expanded(True)
                 self.settle()
                 self.assertEqual(tuple(window.get_size()), (width, height))
                 window._show_note_page()
@@ -105,8 +105,8 @@ class GtkUiTests(unittest.TestCase):
             self.settle()
             self.assertEqual(tuple(window.get_size()), (380, 340))
         window._show_settings()
-        window.setting_widgets["width"].set_value(260)
-        window.setting_widgets["height"].set_value(200)
+        window.settings_page.fields["width"].set_value(260)
+        window.settings_page.fields["height"].set_value(200)
         self.assertTrue(window._save_settings())
         self.settle()
         self.assertEqual(tuple(window.get_size()), (260, 200))
@@ -134,6 +134,134 @@ class GtkUiTests(unittest.TestCase):
         window.commit_note()
         self.assertIn(source, (Path(self.temp.name) / "QuickNotes.md").read_text())
         self.assertFalse(window.state.draft.has_content())
+
+    def test_settings_validation_and_write_failure_preserve_config_and_draft(self):
+        window = self.make_window()
+        window.title_entry.set_text("Unsaved title")
+        window.content_buffer.set_text("Keep this draft")
+        draft = replace(window.state.draft)
+        config = dict(window.config)
+        window._show_settings()
+        page = window.settings_page
+        page.fields["width"].set_value(500)
+        page.fields["note_filename"].set_text("invalid.txt")
+        self.assertFalse(window._save_settings())
+        self.assertIn(".md filename", page.status.get_text())
+        self.assertFalse(window.config_path.exists())
+        self.assertEqual(window.config, config)
+        self.assertEqual(window.state.draft, draft)
+
+        page.fields["note_filename"].set_text("valid.md")
+        with patch.object(self.app, "save_config", side_effect=OSError("Disk unavailable")):
+            self.assertFalse(window._save_settings())
+        self.assertIn("Disk unavailable", page.status.get_text())
+        self.assertEqual(window.page_stack.get_visible_child_name(), "settings")
+        self.assertFalse(window.config_path.exists())
+        self.assertEqual(window.config, config)
+        self.assertEqual(window.state.draft, draft)
+        self.assertEqual(tuple(window.get_size()), (config["width"], config["height"]))
+
+    def test_cancelled_settings_are_reset_when_reopened(self):
+        window = self.make_window()
+        window.content_buffer.set_text("Keep this draft")
+        draft = replace(window.state.draft)
+        config = dict(window.config)
+        window._toggle_settings()
+        fields = window.settings_page.fields
+        fields["default_vault_path"].set_text("/another/vault")
+        fields["note_filename"].set_text("Another.md")
+        fields["width"].set_value(500)
+        window._toggle_settings()
+        self.assertEqual(window.page_stack.get_visible_child_name(), "note")
+        self.assertEqual(window.config, config)
+        self.assertEqual(window.state.draft, draft)
+        self.assertFalse(window.config_path.exists())
+
+        window._toggle_settings()
+        self.assertEqual(fields["default_vault_path"].get_text(), self.temp.name)
+        self.assertEqual(fields["note_filename"].get_text(), config["note_filename"])
+        self.assertEqual(fields["width"].get_value_as_int(), config["width"])
+        self.assertEqual(window.state.draft, draft)
+
+    def test_vault_chooser_cancel_and_accept_preserve_draft_until_settings_save(self):
+        selected = Path(self.temp.name) / "selected-vault"
+        selected.mkdir()
+        window = self.make_window()
+        window.pointer_inside = True
+        window.content_buffer.set_text("Keep this draft")
+        draft = replace(window.state.draft)
+        window._show_settings()
+        page = window.settings_page
+        for result, expected in ((self.app.Gtk.ResponseType.CANCEL, self.temp.name),
+                                 (self.app.Gtk.ResponseType.ACCEPT, str(selected))):
+            with self.subTest(response=result), \
+                    patch.object(self.app.Gtk.FileChooserNative, "new") as create:
+                dialog = create.return_value
+                dialog.get_filename.return_value = str(selected)
+                page.select_vault_button.clicked()
+                self.assertTrue(window.file_chooser_open)
+                response = dialog.connect.call_args.args[1]
+                response(dialog, result)
+                dialog.destroy.assert_called_once_with()
+                self.assertFalse(window.file_chooser_open)
+                self.assertEqual(page.fields["default_vault_path"].get_text(), expected)
+                self.assertEqual(window.config["default_vault_path"], self.temp.name)
+                self.assertFalse(window.config_path.exists())
+                self.assertEqual(window.state.draft, draft)
+
+        self.assertTrue(window._save_settings())
+        self.assertEqual(self.style.load_config(window.config_path)["default_vault_path"],
+                         str(selected))
+        self.assertEqual(window.state.draft, draft)
+
+    def test_vertical_offsets_keep_idle_tab_visible_and_save_clamped_values(self):
+        window = self.make_window(height=200, idle_fraction=0.10)
+        window._show_settings()
+        fields = window.settings_page.fields
+        fields["offset_y"].set_value(-1000)
+        self.assertEqual(fields["offset_y"].get_value_as_int(), -19)
+        fields["height"].set_value(400)
+        fields["offset_y"].set_value(-1000)
+        self.assertEqual(fields["offset_y"].get_value_as_int(), -39)
+        fields["idle_percent"].set_value(5)
+        self.assertEqual(fields["offset_y"].get_value_as_int(), -19)
+
+        for position, requested, expected in (("top", -1000, -19),
+                                               ("bottom", 1000, 19),
+                                               ("center", 1000, 1000)):
+            with self.subTest(position=position):
+                fields["position_vertical"].set_active_id(position)
+                fields["offset_y"].set_value(requested)
+                self.assertEqual(fields["offset_y"].get_value_as_int(), expected)
+                self.assertTrue(window._save_settings())
+                saved = self.style.load_config(window.config_path)
+                self.assertEqual(saved["position_vertical"], position)
+                self.assertEqual(saved["offset_y"], expected)
+                window._show_settings()
+
+    def test_folder_refresh_filters_paths_and_preserves_available_selection(self):
+        root = Path(self.temp.name)
+        (root / "Work").mkdir()
+        (root / "Nested" / "grandchild").mkdir(parents=True)
+        (root / "a-note.md").write_text("A file is not a folder")
+        window = self.make_window(folders=["Configured", "Nested", ".", "..",
+                                           "nested/path", "/absolute"])
+
+        def choices():
+            return [row[0] for row in window.folder_combo.get_model()]
+
+        self.assertEqual(choices(), ["(root)", "Configured", "Nested", "Work"])
+        window.folder_combo.set_active(3)
+        (root / "Added").mkdir()
+        window._refresh_folder_choices()
+        self.assertEqual(choices(), ["(root)", "Added", "Configured", "Nested", "Work"])
+        self.assertEqual(window.folder_combo.get_active_text(), "Work")
+        self.assertEqual(window.state.draft.folder, "Work")
+
+        (root / "Work").rmdir()
+        window._refresh_folder_choices()
+        self.assertEqual(window.folder_combo.get_active_text(), "(root)")
+        self.assertEqual(window.state.draft.folder, "(root)")
 
     def test_toolbar_formats_selected_text_and_returns_from_preview(self):
         window = self.make_window()
