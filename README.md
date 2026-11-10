@@ -1,19 +1,27 @@
 # CornerNote
 
-CornerNote is a small GTK 3 quick-note overlay for KDE Plasma on Wayland. It
-peeks from the top-right edge, keeps a draft in memory while it is collapsed,
-and appends notes to Markdown files in an Obsidian vault.
+A slim GTK quick-note overlay for KDE Plasma on Wayland — peek, type, and save to your Obsidian vault without leaving your flow.
 
-CornerNote requires a Wayland compositor with the `wlr-layer-shell` protocol.
-Fedora KDE Spin with Plasma provides the supported session. Fedora Workstation
-uses GNOME Shell/Mutter, which does not expose layer-shell or allow applications
-to place ordinary windows at exact screen coordinates under Wayland; this
-project does not claim support for GNOME Workstation overlays.
+![version](https://img.shields.io/github/v/release/ChecksMc/Cornernote-for-KDE-Plasma)
+![license](https://img.shields.io/github/license/ChecksMc/Cornernote-for-KDE-Plasma)
+![platform](https://img.shields.io/badge/platform-KDE%20Plasma%20Wayland-blue)
 
 
-<img src="docs/showcase.gif" alt="CornerNote demo" width="400"> 
+
+## Features
+
+- **Slide-in overlay**: hovers from any screen edge, collapses out of the way
+- **Live theming**: follows your KDE/Plasma palette or Pywal colors automatically
+- **History browser**: search and read the last 500 vault notes without leaving the overlay
+- **Markdown preview**: renders bold, italic, lists, code, and more while you edit
+- **Keyboard shortcuts**: full shortcut coverage, bindable KDE global shortcut (e.g. Meta+N)
+- **Multi-monitor support**: pick your screen and position in settings
+
+> **Platform:** KDE Plasma 5.x / 6.x, Wayland session with `wlr-layer-shell`.  
+> Does not support GNOME, X11, or non-layer-shell compositors.
 
 
+[![CornerNote demo](docs/showcase.gif)](docs/showcase.gif)
 
 ## Requirements
 
