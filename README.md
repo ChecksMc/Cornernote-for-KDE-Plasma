@@ -1,6 +1,6 @@
 # CornerNote
 
-A slim GTK quick-note overlay for KDE Plasma on Wayland — peek, type, and save to your Obsidian vault without leaving your flow.
+A slim GTK quick-note overlay for KDE Plasma on Wayland: peek, type, and save to your Obsidian vault without leaving your flow.
 
 ![version](https://img.shields.io/github/v/release/ChecksMc/Cornernote-for-KDE-Plasma?include_prereleases)
 ![license](https://img.shields.io/github/license/ChecksMc/Cornernote-for-KDE-Plasma)
