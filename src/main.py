@@ -13,14 +13,17 @@ from typing import Any
 
 try:
     import gi
+
     gi.require_version("Gtk", "3.0")
     gi.require_version("Gdk", "3.0")
     gi.require_version("GtkLayerShell", "0.1")
     from gi.repository import Gdk, Gio, GLib, Gtk, GtkLayerShell as LayerShell, Pango
 except (ImportError, ValueError) as exc:
-    print("CornerNote requires PyGObject GTK 3 and gtk-layer-shell. "
-          "On Fedora install python3-gobject python3-cairo gtk-layer-shell.",
-          file=sys.stderr)
+    print(
+        "CornerNote requires PyGObject GTK 3 and gtk-layer-shell. "
+        "On Fedora install python3-gobject python3-cairo gtk-layer-shell.",
+        file=sys.stderr,
+    )
     raise SystemExit(1) from exc
 
 HERE = Path(__file__).resolve().parent
@@ -79,7 +82,9 @@ class CornerNote(Gtk.Window):
         self._build_ui()
         self._install_accelerators()
         self._install_css()
-        self.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.add_events(
+            Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK
+        )
         self.connect("enter-notify-event", self._on_enter)
         self.connect("leave-notify-event", self._on_leave)
         self.connect("key-press-event", self._on_key)
@@ -111,15 +116,28 @@ class CornerNote(Gtk.Window):
                 self._on_prepare_for_sleep,
             )
         except (GLib.Error, OSError) as exc:
-            print(f"[cornernote] suspend notifications unavailable: {exc}", file=sys.stderr)
+            print(
+                f"[cornernote] suspend notifications unavailable: {exc}",
+                file=sys.stderr,
+            )
 
-    def _on_prepare_for_sleep(self, _connection: Gio.DBusConnection,
-                              _sender: str, _path: str, _interface: str,
-                              _signal: str, parameters: GLib.Variant,
-                              _user_data: Any = None) -> None:
+    def _on_prepare_for_sleep(
+        self,
+        _connection: Gio.DBusConnection,
+        _sender: str,
+        _path: str,
+        _interface: str,
+        _signal: str,
+        parameters: GLib.Variant,
+        _user_data: Any = None,
+    ) -> None:
         """Prepare the overlay before sleep and schedule restoration after wake."""
         sleeping = bool(parameters.unpack()[0])
-        print(f"[cornernote] sleep notification: {'suspending' if sleeping else 'resuming'}", file=sys.stderr, flush=True)
+        print(
+            f"[cornernote] sleep notification: {'suspending' if sleeping else 'resuming'}",
+            file=sys.stderr,
+            flush=True,
+        )
         if sleeping:
             self._cancel_collapse()
             self._stop_animation()
@@ -133,7 +151,9 @@ class CornerNote(Gtk.Window):
 
     def _restore_after_resume(self) -> bool:
         """Recreate the layer-shell surface after the compositor resumes."""
-        print("[cornernote] restoring overlay after resume", file=sys.stderr, flush=True)
+        print(
+            "[cornernote] restoring overlay after resume", file=sys.stderr, flush=True
+        )
         self.resume_source = None
         self._cancel_collapse()
         self._stop_animation()
@@ -154,7 +174,9 @@ class CornerNote(Gtk.Window):
         self._refresh_clock()
         return GLib.SOURCE_REMOVE
 
-    def _on_monitors_changed(self, _display: Gdk.Display, _monitor: Gdk.Monitor) -> None:
+    def _on_monitors_changed(
+        self, _display: Gdk.Display, _monitor: Gdk.Monitor
+    ) -> None:
         """Re-evaluate the configured screen once GDK updates its monitor list."""
         GLib.idle_add(self._refresh_monitor)
 
@@ -205,8 +227,12 @@ class CornerNote(Gtk.Window):
             screen_width = screen.get_width() if screen else self.config["width"]
             screen_height = screen.get_height() if screen else self.config["height"]
 
-        edges = (LayerShell.Edge.TOP, LayerShell.Edge.BOTTOM,
-                 LayerShell.Edge.LEFT, LayerShell.Edge.RIGHT)
+        edges = (
+            LayerShell.Edge.TOP,
+            LayerShell.Edge.BOTTOM,
+            LayerShell.Edge.LEFT,
+            LayerShell.Edge.RIGHT,
+        )
         for edge in edges:
             LayerShell.set_anchor(self, edge, False)
             LayerShell.set_margin(self, edge, 0)
@@ -217,16 +243,22 @@ class CornerNote(Gtk.Window):
             x_margin = self.config.get("offset_x", 0)
         elif horizontal == "center":
             x_edge = LayerShell.Edge.LEFT
-            x_margin = round((screen_width - self.config["width"]) / 2) + self.config.get("offset_x", 0)
+            x_margin = round(
+                (screen_width - self.config["width"]) / 2
+            ) + self.config.get("offset_x", 0)
         else:
             x_edge = LayerShell.Edge.RIGHT
-            x_margin = self.config.get("margin_right", 20) - self.config.get("offset_x", 0)
+            x_margin = self.config.get("margin_right", 20) - self.config.get(
+                "offset_x", 0
+            )
         LayerShell.set_anchor(self, x_edge, True)
         LayerShell.set_margin(self, x_edge, int(x_margin))
 
         vertical = self.config.get("position_vertical", "top")
         offset_y = self.config.get("offset_y", 0)
-        visible_tab = max(1, round(self.config["height"] * self.config["idle_fraction"]))
+        visible_tab = max(
+            1, round(self.config["height"] * self.config["idle_fraction"])
+        )
         if vertical == "top":
             y_edge = LayerShell.Edge.TOP
             y_margin = max(offset_y, 1 - visible_tab)
@@ -239,9 +271,15 @@ class CornerNote(Gtk.Window):
         LayerShell.set_anchor(self, y_edge, True)
         self.position_vertical_edge = y_edge
         self.position_vertical_base = int(y_margin)
-        LayerShell.set_margin(self, y_edge,
-                              self.idle_margin() if initial or not self.expanded
-                              else self.position_vertical_base)
+        LayerShell.set_margin(
+            self,
+            y_edge,
+            (
+                self.idle_margin()
+                if initial or not self.expanded
+                else self.position_vertical_base
+            ),
+        )
 
     def _build_ui(self) -> None:
         """Construct the note editor, status area, and root layout."""
@@ -261,9 +299,14 @@ class CornerNote(Gtk.Window):
         root.pack_start(self.page_stack, True, True, 0)
         self.page_stack.add_named(self._build_note_page(), "note")
         self.settings_page = SettingsPage(
-            self.config, self._save_settings, self._show_note_page,
-            self._apply_style_config, self._show_status,
-            self._on_folder_popup, self._on_chooser_changed)
+            self.config,
+            self._save_settings,
+            self._show_note_page,
+            self._apply_style_config,
+            self._show_status,
+            self._on_folder_popup,
+            self._on_chooser_changed,
+        )
         self.page_stack.add_named(self.settings_page, "settings")
         self.history_page = HistoryPage()
         self.page_stack.add_named(self.history_page, "history")
@@ -271,7 +314,9 @@ class CornerNote(Gtk.Window):
         # requisitions from enlarging the layer surface beyond the saved size.
         # Small notes can scroll to controls that do not fit in the viewport.
         self.layout_scroll = Gtk.ScrolledWindow()
-        self.layout_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.layout_scroll.set_policy(
+            Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC
+        )
         self.layout_scroll.set_propagate_natural_width(False)
         self.layout_scroll.set_propagate_natural_height(False)
         self.layout_scroll.add(root)
@@ -317,14 +362,17 @@ class CornerNote(Gtk.Window):
 
         formatting = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
         for label, tooltip, action in (
-                ("H1", "Heading · Ctrl+1", self._insert_heading_marker),
-                ("B", "Bold · Ctrl+B", lambda: self._wrap_selection("**")),
-                ("I", "Italic · Ctrl+I", lambda: self._wrap_selection("*")),
-                ("U", "Underline · Ctrl+U", lambda: self._wrap_selection("<u>", "</u>"))):
+            ("H1", "Heading · Ctrl+1", self._insert_heading_marker),
+            ("B", "Bold · Ctrl+B", lambda: self._wrap_selection("**")),
+            ("I", "Italic · Ctrl+I", lambda: self._wrap_selection("*")),
+            ("U", "Underline · Ctrl+U", lambda: self._wrap_selection("<u>", "</u>")),
+        ):
             button = Gtk.Button(label=label)
             button.set_focus_on_click(False)
             button.set_tooltip_text(tooltip)
-            button.connect("clicked", lambda _button, callback=action: self._format_body(callback))
+            button.connect(
+                "clicked", lambda _button, callback=action: self._format_body(callback)
+            )
             formatting.pack_start(button, False, False, 0)
         self.preview_button = Gtk.ToggleButton(label="Preview")
         self.preview_button.set_tooltip_text("Show rendered formatting · Ctrl+P")
@@ -385,7 +433,8 @@ class CornerNote(Gtk.Window):
         append_options = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.append_mode_check = Gtk.CheckButton(label="Append mode")
         self.append_mode_check.set_tooltip_text(
-            "Treat the title as a Markdown filepath inside your vault")
+            "Treat the title as a Markdown filepath inside your vault"
+        )
         self.append_mode_check.connect("toggled", self._on_append_checkbox_toggled)
         append_options.pack_start(self.append_mode_check, False, False, 0)
         note_page.pack_start(append_options, False, False, 0)
@@ -452,14 +501,20 @@ class CornerNote(Gtk.Window):
     def _focus_editor(self) -> None:
         """Restore focus to the currently visible draft control."""
         if self.state.mode == Mode.CONTENT:
-            (self.preview_view if self.preview_button.get_active() else self.content_view).grab_focus()
+            (
+                self.preview_view
+                if self.preview_button.get_active()
+                else self.content_view
+            ).grab_focus()
         elif self.state.mode != Mode.DISCARD_CONFIRM:
             self.title_entry.grab_focus()
 
     def _save_settings(self) -> bool:
         """Validate, persist, and close settings after a successful save."""
         new_config = self.settings_page.read_config(self.config)
-        if not new_config["default_vault_path"] or not new_config["note_filename"].endswith(".md"):
+        if not new_config["default_vault_path"] or not new_config[
+            "note_filename"
+        ].endswith(".md"):
             self.settings_page.status.set_text("Enter a vault path and a .md filename.")
             return False
         try:
@@ -503,7 +558,8 @@ class CornerNote(Gtk.Window):
         except OSError:
             pass
         self.available_folders = sorted(
-            f for f in folders if Path(f).name == f and f not in (".", ".."))
+            f for f in folders if Path(f).name == f and f not in (".", "..")
+        )
         for folder in self.available_folders:
             self.folder_combo.append_text(folder)
         choices = ["(root)", *self.available_folders]
@@ -527,7 +583,8 @@ class CornerNote(Gtk.Window):
                 continue
             try:
                 monitor = Gio.File.new_for_path(str(directory)).monitor_directory(
-                    Gio.FileMonitorFlags.WATCH_MOVES, None)
+                    Gio.FileMonitorFlags.WATCH_MOVES, None
+                )
                 monitor.connect("changed", self._on_theme_file_changed)
                 self.theme_monitors.append(monitor)
             except GLib.Error:
@@ -538,7 +595,9 @@ class CornerNote(Gtk.Window):
         if file and file.get_basename() in ("kdeglobals", "colors.json"):
             if getattr(self, "theme_refresh_source", None):
                 GLib.source_remove(self.theme_refresh_source)
-            self.theme_refresh_source = GLib.timeout_add(180, self._refresh_css_debounced)
+            self.theme_refresh_source = GLib.timeout_add(
+                180, self._refresh_css_debounced
+            )
 
     def _refresh_css_debounced(self) -> bool:
         """Refresh CSS once after a short palette-write debounce."""
@@ -565,7 +624,10 @@ class CornerNote(Gtk.Window):
         self.css_provider = Gtk.CssProvider()
         self.css_provider.load_from_data(build_css(self.config).encode("utf-8"))
         Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(), self.css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+            Gdk.Screen.get_default(),
+            self.css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
 
     def _refresh_clock(self) -> bool:
         """Update the compact local date and time labels."""
@@ -583,13 +645,17 @@ class CornerNote(Gtk.Window):
         draft.content = self.content_buffer.get_text(start, end, True)
         draft.date_tag = self.date_entry.get_text()
         draft.folder = self.folder_combo.get_active_text() or "(root)"
-        draft.append_mode = (self.append_mode_check.get_active()
-                             or self._is_filepath_title(draft.title))
+        draft.append_mode = (
+            self.append_mode_check.get_active() or self._is_filepath_title(draft.title)
+        )
         self.status_label.hide()
 
     def _is_filepath_title(self, title: str) -> bool:
         """Recognize Markdown file paths entered in the title field."""
-        return Path(os.path.expandvars(os.path.expanduser(title.strip()))).suffix.lower() == ".md"
+        return (
+            Path(os.path.expandvars(os.path.expanduser(title.strip()))).suffix.lower()
+            == ".md"
+        )
 
     def _on_title_changed(self, _entry: Gtk.Entry) -> None:
         """Automatically enable append mode when the title is a Markdown path."""
@@ -689,8 +755,12 @@ class CornerNote(Gtk.Window):
         if event.detail == Gdk.NotifyType.INFERIOR:
             return False
         self.pointer_inside = False
-        if (not self.dropdown_open and not self.file_chooser_open and not self.state.forced_open
-                and self.state.mode != Mode.DISCARD_CONFIRM):
+        if (
+            not self.dropdown_open
+            and not self.file_chooser_open
+            and not self.state.forced_open
+            and self.state.mode != Mode.DISCARD_CONFIRM
+        ):
             self._schedule_collapse()
         return False
 
@@ -708,7 +778,9 @@ class CornerNote(Gtk.Window):
             """Advance one animation frame and stop at the final position."""
             progress = min(1.0, (time.monotonic() - self.animation_start) / duration)
             eased = 1.0 - (1.0 - progress) ** 3
-            value = round(self.animation_from + (self.animation_to - self.animation_from) * eased)
+            value = round(
+                self.animation_from + (self.animation_to - self.animation_from) * eased
+            )
             LayerShell.set_margin(self, edge, value)
             if progress >= 1.0:
                 self.animation_source = None
@@ -736,8 +808,12 @@ class CornerNote(Gtk.Window):
         def finish() -> bool:
             """Collapse only if no pointer or forced-open state prevents it."""
             self.collapse_source = None
-            if (not self.pointer_inside and not self.dropdown_open
-                    and not self.file_chooser_open and not self.state.forced_open):
+            if (
+                not self.pointer_inside
+                and not self.dropdown_open
+                and not self.file_chooser_open
+                and not self.state.forced_open
+            ):
                 self.collapse()
             return GLib.SOURCE_REMOVE
 
@@ -756,8 +832,11 @@ class CornerNote(Gtk.Window):
             return
         if self.page_stack.get_visible_child_name() == "history":
             page = self.history_page
-            (page.viewer if page.stack.get_visible_child_name() == "detail"
-             else page.search_entry).grab_focus()
+            (
+                page.viewer
+                if page.stack.get_visible_child_name() == "detail"
+                else page.search_entry
+            ).grab_focus()
             return
         self._focus_editor()
 
@@ -868,11 +947,15 @@ class CornerNote(Gtk.Window):
         )
         for keyval, modifiers, callback in bindings:
             self.accel_group.connect(
-                keyval, modifiers, Gtk.AccelFlags.VISIBLE,
-                self._accelerator_callback(callback))
+                keyval,
+                modifiers,
+                Gtk.AccelFlags.VISIBLE,
+                self._accelerator_callback(callback),
+            )
 
     def _accelerator_callback(self, callback: Any) -> Any:
         """Adapt a no-argument action to the GTK accelerator closure signature."""
+
         def activate(*_args: Any) -> bool:
             callback()
             return True
@@ -903,8 +986,10 @@ class CornerNote(Gtk.Window):
 
     def _body_has_focus(self) -> bool:
         """Return whether body-formatting shortcuts have a valid target."""
-        return (self.page_stack.get_visible_child_name() == "note"
-                and self.get_focus() == self.content_view)
+        return (
+            self.page_stack.get_visible_child_name() == "note"
+            and self.get_focus() == self.content_view
+        )
 
     def _wrap_if_editing(self, prefix: str, suffix: str | None = None) -> None:
         """Apply Markdown delimiters only while the note body has focus."""
@@ -922,9 +1007,16 @@ class CornerNote(Gtk.Window):
             return
         vault = Path(self.config["default_vault_path"]).expanduser()
         dialog = Gtk.FileChooserDialog(
-            title="Search Markdown notes", parent=self,
+            title="Search Markdown notes",
+            parent=self,
             action=Gtk.FileChooserAction.OPEN,
-            buttons=("Cancel", Gtk.ResponseType.CANCEL, "Select", Gtk.ResponseType.ACCEPT))
+            buttons=(
+                "Cancel",
+                Gtk.ResponseType.CANCEL,
+                "Select",
+                Gtk.ResponseType.ACCEPT,
+            ),
+        )
         dialog.set_modal(True)
         if vault.is_dir():
             dialog.set_current_folder(str(vault))
@@ -937,7 +1029,9 @@ class CornerNote(Gtk.Window):
 
         def response(chooser: Gtk.FileChooserDialog, result: int) -> None:
             """Use the selected vault note as the append destination."""
-            filename = chooser.get_filename() if result == Gtk.ResponseType.ACCEPT else None
+            filename = (
+                chooser.get_filename() if result == Gtk.ResponseType.ACCEPT else None
+            )
             if filename:
                 selected = Path(filename)
                 try:
@@ -1014,11 +1108,21 @@ class CornerNote(Gtk.Window):
             return
         try:
             if draft.append_mode:
-                destination = append_to_file(self.config, draft.title, draft.content,
-                                              draft.date_tag, draft.folder)
+                destination = append_to_file(
+                    self.config,
+                    draft.title,
+                    draft.content,
+                    draft.date_tag,
+                    draft.folder,
+                )
             else:
-                destination = write_note(self.config, draft.title, draft.content,
-                                         draft.date_tag, draft.folder)
+                destination = write_note(
+                    self.config,
+                    draft.title,
+                    draft.content,
+                    draft.date_tag,
+                    draft.folder,
+                )
         except (OSError, ValueError, KeyError) as exc:
             self._show_status(f"Save failed: {exc}")
             print(f"[cornernote] save failed: {exc}", file=sys.stderr)
@@ -1042,7 +1146,9 @@ class CornerNote(Gtk.Window):
 def main() -> int:
     """Start the GTK daemon and run its event loop."""
     if os.environ.get("XDG_SESSION_TYPE") not in (None, "wayland"):
-        print("CornerNote requires a Wayland session (gtk-layer-shell).", file=sys.stderr)
+        print(
+            "CornerNote requires a Wayland session (gtk-layer-shell).", file=sys.stderr
+        )
         return 1
     try:
         config = load_config(os.environ.get("CORNERNOTE_CONFIG", CONFIG_PATH))
