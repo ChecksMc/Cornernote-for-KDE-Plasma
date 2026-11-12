@@ -39,7 +39,11 @@ _INLINE = (
     ("italic", re.compile(r"_(?!_)(?=\S)((?:__.+?__|[^_])+?)(?<=\S)_(?!_)"), 1),
     ("underline", re.compile(r"<u>(.+?)</u>", re.IGNORECASE), 1),
     ("strikethrough", re.compile(r"~~(?=\S)(.+?)(?<=\S)~~"), 1),
-    ("link", re.compile(r"!?\[([^\[\]\n]+)\]\((?:[^()\s]|\([^()]*\))+?(?:\s+\"[^\"]*\")?\)"), 1),
+    (
+        "link",
+        re.compile(r"!?\[([^\[\]\n]+)\]\((?:[^()\s]|\([^()]*\))+?(?:\s+\"[^\"]*\")?\)"),
+        1,
+    ),
 )
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 _HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+(.*)$")
@@ -84,7 +88,7 @@ def _mask_literals(source: str) -> tuple[str, dict[int, tuple[int, int, int]]]:
             code[token.start()] = (token.end(), closing.start(), closing.end())
             end = closing.end()
             index = closing_index
-        parts.extend((source[previous:token.start()], "\0" * (end - token.start())))
+        parts.extend((source[previous : token.start()], "\0" * (end - token.start())))
         previous = end
         index += 1
     parts.append(source[previous:])
@@ -120,7 +124,11 @@ class _Output:
         index = 0
         while index < len(source):
             char = source[index]
-            if char == "\\" and index + 1 < len(source) and source[index + 1] in _ESCAPABLE:
+            if (
+                char == "\\"
+                and index + 1 < len(source)
+                and source[index + 1] in _ESCAPABLE
+            ):
                 self.add(source[index + 1])
                 index += 2
                 continue
@@ -132,14 +140,21 @@ class _Output:
                     end, closing, closing_end = code[index]
                     literal = source[end:closing]
                     padding = 0
-                    if literal.startswith(" ") and literal.endswith(" ") and literal.strip():
+                    if (
+                        literal.startswith(" ")
+                        and literal.endswith(" ")
+                        and literal.strip()
+                    ):
                         literal = literal[1:-1]
                         padding = 1
                     start = self.length
                     self.add(literal)
                     self.style(start, "code")
-                    self.source_style(source_start + end + padding,
-                                      source_start + closing - padding, "code")
+                    self.source_style(
+                        source_start + end + padding,
+                        source_start + closing - padding,
+                        "code",
+                    )
                     index = closing_end
                     continue
                 self.add(source[index:end])
@@ -155,14 +170,19 @@ class _Output:
                 match = pattern.match(masked, index)
                 if match is None:
                     continue
-                inner = source[match.start(group):match.end(group)]
-                if kind in ("bold", "italic", "strikethrough") and not inner.strip("*_~"):
+                inner = source[match.start(group) : match.end(group)]
+                if kind in ("bold", "italic", "strikethrough") and not inner.strip(
+                    "*_~"
+                ):
                     continue
                 start = self.length
                 self.inline(inner, source_start + match.start(group), depth + 1)
                 self.style(start, kind)
-                self.source_style(source_start + match.start(group),
-                                  source_start + match.end(group), kind)
+                self.source_style(
+                    source_start + match.start(group),
+                    source_start + match.end(group),
+                    kind,
+                )
                 index = match.end()
                 matched = True
                 break
@@ -197,8 +217,12 @@ def render_markdown(source: str) -> RenderedMarkdown:
         line = raw_line.rstrip("\r\n")
         candidate = _FENCE.match(line)
         if fence is not None:
-            if (candidate and candidate[1][0] == fence[0]
-                    and len(candidate[1]) >= len(fence) and not candidate[2].strip()):
+            if (
+                candidate
+                and candidate[1][0] == fence[0]
+                and len(candidate[1]) >= len(fence)
+                and not candidate[2].strip()
+            ):
                 output.style(code_start, "code_block")
                 output.source_style(source_code_start, line_start, "code_block")
                 fence = None
@@ -230,7 +254,9 @@ def render_markdown(source: str) -> RenderedMarkdown:
         output.inline(line, line_start)
         if heading:
             output.style(start, f"heading{len(heading[1])}")
-            output.source_style(line_start, line_start + len(line), f"heading{len(heading[1])}")
+            output.source_style(
+                line_start, line_start + len(line), f"heading{len(heading[1])}"
+            )
         if quoted:
             output.style(start, "quote")
             output.source_style(quote_start, quote_end, "quote")
@@ -238,4 +264,6 @@ def render_markdown(source: str) -> RenderedMarkdown:
     if fence is not None:
         output.style(code_start, "code_block")
         output.source_style(source_code_start, len(source), "code_block")
-    return RenderedMarkdown("".join(output.parts), tuple(output.spans), tuple(output.source_spans))
+    return RenderedMarkdown(
+        "".join(output.parts), tuple(output.spans), tuple(output.source_spans)
+    )

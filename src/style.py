@@ -12,25 +12,40 @@ from typing import Any, Callable
 Config = dict[str, Any]
 Palette = dict[str, str]
 
-CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "cornernote"
+CONFIG_DIR = (
+    Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "cornernote"
+)
 CONFIG_PATH = CONFIG_DIR / "config.json"
 DEFAULTS: Config = {
-    "width": 380, "height": 340, "idle_fraction": 0.04,
+    "width": 380,
+    "height": 340,
+    "idle_fraction": 0.04,
     "margin_right": 20,
-    "position_horizontal": "right", "position_vertical": "top",
-    "offset_x": 0, "offset_y": 0,
+    "position_horizontal": "right",
+    "position_vertical": "top",
+    "offset_x": 0,
+    "offset_y": 0,
     "monitor": "primary",
     "socket_path": "${XDG_RUNTIME_DIR}/cornernote.sock",
     "default_vault_path": "~/Documents",
-    "note_filename": "QuickNotes.md", "date_format": "%Y-%m-%d",
-    "font_family": "Monospace", "font_size": 11, "anim_ms": 320,
-    "collapse_delay_ms": 700, "theme_source": "plasma",
+    "note_filename": "QuickNotes.md",
+    "date_format": "%Y-%m-%d",
+    "font_family": "Monospace",
+    "font_size": 11,
+    "anim_ms": 320,
+    "collapse_delay_ms": 700,
+    "theme_source": "plasma",
     "theme_fallback": "catppuccin_mocha",
     "background_image": "",
     "rounded_corners": False,
     "auto_update": False,
-    "custom_palette": {"background": "#1e1e2e", "foreground": "#cdd6f4",
-                       "accent": "#89b4fa", "muted": "#6c7086", "card": "#313244"},
+    "custom_palette": {
+        "background": "#1e1e2e",
+        "foreground": "#cdd6f4",
+        "accent": "#89b4fa",
+        "muted": "#6c7086",
+        "card": "#313244",
+    },
     "folders": [],
 }
 PALETTE_LABELS: dict[str, str] = {
@@ -47,44 +62,74 @@ PALETTE_LABELS: dict[str, str] = {
 }
 PALETTES: dict[str, Palette] = {
     "catppuccin_mocha": {
-        "background": "#1e1e2e", "foreground": "#cdd6f4", "accent": "#89b4fa",
-        "muted": "#6c7086", "card": "#313244",
+        "background": "#1e1e2e",
+        "foreground": "#cdd6f4",
+        "accent": "#89b4fa",
+        "muted": "#6c7086",
+        "card": "#313244",
     },
     "catppuccin_latte": {
-        "background": "#eff1f5", "foreground": "#4c4f69", "accent": "#1e66f5",
-        "muted": "#7c7f93", "card": "#e6e9ef",
+        "background": "#eff1f5",
+        "foreground": "#4c4f69",
+        "accent": "#1e66f5",
+        "muted": "#7c7f93",
+        "card": "#e6e9ef",
     },
     "dracula": {
-        "background": "#282a36", "foreground": "#f8f8f2", "accent": "#bd93f9",
-        "muted": "#6272a4", "card": "#343746",
+        "background": "#282a36",
+        "foreground": "#f8f8f2",
+        "accent": "#bd93f9",
+        "muted": "#6272a4",
+        "card": "#343746",
     },
     "gruvbox_dark": {
-        "background": "#282828", "foreground": "#ebdbb2", "accent": "#fabd2f",
-        "muted": "#928374", "card": "#3c3836",
+        "background": "#282828",
+        "foreground": "#ebdbb2",
+        "accent": "#fabd2f",
+        "muted": "#928374",
+        "card": "#3c3836",
     },
     "gruvbox_light": {
-        "background": "#fbf1c7", "foreground": "#3c3836", "accent": "#af3a03",
-        "muted": "#7c6f64", "card": "#f2e5bc",
+        "background": "#fbf1c7",
+        "foreground": "#3c3836",
+        "accent": "#af3a03",
+        "muted": "#7c6f64",
+        "card": "#f2e5bc",
     },
     "nord": {
-        "background": "#2e3440", "foreground": "#eceff4", "accent": "#88c0d0",
-        "muted": "#7b88a1", "card": "#3b4252",
+        "background": "#2e3440",
+        "foreground": "#eceff4",
+        "accent": "#88c0d0",
+        "muted": "#7b88a1",
+        "card": "#3b4252",
     },
     "retro_green": {
-        "background": "#0a0f0a", "foreground": "#b8ffb8", "accent": "#42e66c",
-        "muted": "#73a17b", "card": "#101b12",
+        "background": "#0a0f0a",
+        "foreground": "#b8ffb8",
+        "accent": "#42e66c",
+        "muted": "#73a17b",
+        "card": "#101b12",
     },
     "solarized_dark": {
-        "background": "#002b36", "foreground": "#eee8d5", "accent": "#b58900",
-        "muted": "#839496", "card": "#073642",
+        "background": "#002b36",
+        "foreground": "#eee8d5",
+        "accent": "#b58900",
+        "muted": "#839496",
+        "card": "#073642",
     },
     "solarized_light": {
-        "background": "#fdf6e3", "foreground": "#586e75", "accent": "#268bd2",
-        "muted": "#839496", "card": "#eee8d5",
+        "background": "#fdf6e3",
+        "foreground": "#586e75",
+        "accent": "#268bd2",
+        "muted": "#839496",
+        "card": "#eee8d5",
     },
     "tokyo_night": {
-        "background": "#1a1b26", "foreground": "#c0caf5", "accent": "#7aa2f7",
-        "muted": "#565f89", "card": "#24283b",
+        "background": "#1a1b26",
+        "foreground": "#c0caf5",
+        "accent": "#7aa2f7",
+        "muted": "#565f89",
+        "card": "#24283b",
     },
 }
 
@@ -146,11 +191,15 @@ def load_config(path: str | Path | None = None) -> Config:
     config["collapse_delay_ms"] = max(0, int(config.get("collapse_delay_ms", 700)))
     if config.get("theme_source") not in ("plasma", "pywal", "fallback", "custom"):
         config["theme_source"] = "plasma"
-    if not isinstance(config.get("theme_fallback"), str) or config["theme_fallback"] not in PALETTES:
+    if (
+        not isinstance(config.get("theme_fallback"), str)
+        or config["theme_fallback"] not in PALETTES
+    ):
         config["theme_fallback"] = "catppuccin_mocha"
     custom_palette = config.get("custom_palette")
     if not isinstance(custom_palette, dict) or not all(
-            _valid_color(custom_palette.get(key)) for key in PALETTES["catppuccin_mocha"]):
+        _valid_color(custom_palette.get(key)) for key in PALETTES["catppuccin_mocha"]
+    ):
         config["custom_palette"] = dict(PALETTES["catppuccin_mocha"])
     config["folders"] = list(config.get("folders") or [])
     return config
@@ -207,7 +256,9 @@ def palette_options() -> tuple[tuple[str, str], ...]:
 def _plasma_palette() -> Palette | None:
     """Read the active Plasma color scheme from kdeglobals."""
     parser = configparser.ConfigParser(interpolation=None)
-    kde_path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "kdeglobals"
+    kde_path = (
+        Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "kdeglobals"
+    )
     try:
         parser.read(kde_path, encoding="utf-8")
         view = parser["Colors:View"]
@@ -215,26 +266,36 @@ def _plasma_palette() -> Palette | None:
 
         def rgb(section: configparser.SectionProxy, key: str, fallback: str) -> str:
             parts = [int(n.strip()) for n in section.get(key, "").split(",")]
-            return ("#%02x%02x%02x" % tuple(max(0, min(255, n)) for n in parts[:3])
-                    if len(parts) >= 3 else fallback)
+            return (
+                "#%02x%02x%02x" % tuple(max(0, min(255, n)) for n in parts[:3])
+                if len(parts) >= 3
+                else fallback
+            )
 
-        return {"background": rgb(view, "BackgroundNormal", "#1e1e2e"),
-                "foreground": rgb(view, "ForegroundNormal", "#cdd6f4"),
-                "accent": rgb(window, "DecorationFocus", "#89b4fa"),
-                "muted": rgb(view, "ForegroundInactive", "#6c7086"),
-                "card": rgb(view, "BackgroundAlternate", "#313244")}
+        return {
+            "background": rgb(view, "BackgroundNormal", "#1e1e2e"),
+            "foreground": rgb(view, "ForegroundNormal", "#cdd6f4"),
+            "accent": rgb(window, "DecorationFocus", "#89b4fa"),
+            "muted": rgb(view, "ForegroundInactive", "#6c7086"),
+            "card": rgb(view, "BackgroundAlternate", "#313244"),
+        }
     except (configparser.Error, OSError, KeyError, ValueError):
         return None
 
 
 def _pywal_palette() -> Palette | None:
-    wal_path = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "wal/colors.json"
+    wal_path = (
+        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+        / "wal/colors.json"
+    )
     try:
         data = json.loads(wal_path.read_text(encoding="utf-8"))
         special, colors = data.get("special", {}), data.get("colors", {})
         palette = {
-            "background": special.get("background"), "foreground": special.get("foreground"),
-            "accent": colors.get("color4"), "muted": colors.get("color8"),
+            "background": special.get("background"),
+            "foreground": special.get("foreground"),
+            "accent": colors.get("color4"),
+            "muted": colors.get("color8"),
             "card": colors.get("color0"),
         }
         if all(_valid_color(color) for color in palette.values()):
@@ -249,7 +310,8 @@ def get_palette(config: Config) -> Palette:
     if source == "custom":
         custom = config.get("custom_palette", {})
         if isinstance(custom, dict) and all(
-                _valid_color(custom.get(key)) for key in PALETTES["catppuccin_mocha"]):
+            _valid_color(custom.get(key)) for key in PALETTES["catppuccin_mocha"]
+        ):
             return {key: str(custom[key]) for key in PALETTES["catppuccin_mocha"]}
         return dict(PALETTES[config.get("theme_fallback", "catppuccin_mocha")])
     order: tuple[Callable[[], Palette | None], ...] = {
@@ -261,16 +323,22 @@ def get_palette(config: Config) -> Palette:
         palette = loader()
         if palette:
             return palette
-    return dict(PALETTES.get(config.get("theme_fallback"), PALETTES["catppuccin_mocha"]))
+    return dict(
+        PALETTES.get(config.get("theme_fallback"), PALETTES["catppuccin_mocha"])
+    )
 
 
 def _contrast_color(color: str, background: str) -> str:
     """Guard text legibility if a Plasma scheme provides an unusual pair."""
+
     def luminance(value: str) -> float:
-        channels = [int(value[index:index + 2], 16) / 255 for index in (1, 3, 5)]
-        linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-                  for c in channels]
+        channels = [int(value[index : index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [
+            c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+            for c in channels
+        ]
         return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
     try:
         a, b = luminance(color), luminance(background)
         if (max(a, b) + 0.05) / (min(a, b) + 0.05) >= 4.5:
@@ -285,11 +353,15 @@ def build_css(config: Config) -> str:
     palette = dict(palette)
     palette["foreground"] = _contrast_color(palette["foreground"], palette["card"])
     font = str(config.get("font_family", "Monospace"))
-    font = "".join(character for character in font if character.isalnum() or character in " _-")
+    font = "".join(
+        character for character in font if character.isalnum() or character in " _-"
+    )
     size = int(config.get("font_size", 11))
     radius = "8px" if config.get("rounded_corners", False) else "0"
-    texture = (f"linear-gradient(45deg, alpha({palette['foreground']}, 0.025) 25%, transparent 25%, "
-               f"transparent 75%, alpha({palette['foreground']}, 0.025) 75%)")
+    texture = (
+        f"linear-gradient(45deg, alpha({palette['foreground']}, 0.025) 25%, transparent 25%, "
+        f"transparent 75%, alpha({palette['foreground']}, 0.025) 75%)"
+    )
     image_uri = _image_uri(config)
     images = f'{texture}, url("{image_uri}")' if image_uri else texture
     image_sizes = "auto, cover" if image_uri else "auto"
@@ -323,7 +395,9 @@ def build_preview_css(config: Config) -> str:
     palette = dict(get_palette(config))
     palette["foreground"] = _contrast_color(palette["foreground"], palette["card"])
     font = str(config.get("font_family", "Monospace"))
-    font = "".join(character for character in font if character.isalnum() or character in " _-")
+    font = "".join(
+        character for character in font if character.isalnum() or character in " _-"
+    )
     size = int(config.get("font_size", 11))
     radius = "8px" if config.get("rounded_corners", False) else "0"
     image_uri = _image_uri(config)

@@ -50,8 +50,7 @@ def start_server(socket_path: str, on_toggle: Callable[[], None]) -> socket.sock
     channel.set_close_on_unref(False)
     channel.set_encoding(None)
     channel.set_buffered(False)
-    GLib.io_add_watch(channel, GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR,
-                      accept_ready)
+    GLib.io_add_watch(channel, GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR, accept_ready)
     return server
 
 

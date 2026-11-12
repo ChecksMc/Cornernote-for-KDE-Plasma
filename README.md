@@ -199,6 +199,7 @@ The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms
 - `src/main.py` — GTK layer-shell overlay and daemon entry point
 - `src/state.py` — draft buffer and note interaction state machine
 - `src/style.py` — config, Pywal/KDE palette loading, and GTK CSS
+- `src/settings_view.py` — settings controls, monitor choices, and vault folder picker
 - `src/style_editor.py` — standalone appearance editor and live preview
 - `src/ipc.py` — GLib-integrated Unix socket server and CLI client
 - `src/obsidian.py` — safe Markdown path selection and append writer

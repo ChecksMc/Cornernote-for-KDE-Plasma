@@ -29,9 +29,11 @@ class UpdatePanel(Gtk.Box):
 
         self.auto_install = Gtk.CheckButton(label="Install updates automatically")
         self.pack_start(self.auto_install, False, False, 0)
-        hint = Gtk.Label(label="When enabled, checks at startup and every six hours. "
-                         "Save this setting with Save settings. Restart after installation.",
-                         xalign=0)
+        hint = Gtk.Label(
+            label="When enabled, checks at startup and every six hours. "
+            "Save this setting with Save settings. Restart after installation.",
+            xalign=0,
+        )
         hint.set_line_wrap(True)
         hint.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         hint.set_max_width_chars(1)
@@ -44,7 +46,9 @@ class UpdatePanel(Gtk.Box):
         self.install_button.set_sensitive(False)
         self.install_button.connect("clicked", lambda *_: self.install())
         self.pack_start(self.install_button, False, False, 0)
-        self.status = Gtk.Label(label="Updates use this checkout's tracked Git branch.", xalign=0)
+        self.status = Gtk.Label(
+            label="Updates use this checkout's tracked Git branch.", xalign=0
+        )
         self.status.set_line_wrap(True)
         self.status.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         self.status.set_max_width_chars(1)
@@ -63,7 +67,8 @@ class UpdatePanel(Gtk.Box):
         if enabled:
             self._startup = GLib.idle_add(self._startup_check)
             self._timer = GLib.timeout_add_seconds(
-                AUTO_UPDATE_INTERVAL_SECONDS, self._automatic_check)
+                AUTO_UPDATE_INTERVAL_SECONDS, self._automatic_check
+            )
 
     def _startup_check(self) -> bool:
         self._startup = None
@@ -108,13 +113,17 @@ class UpdatePanel(Gtk.Box):
         if error:
             self.status.set_text(error)
         elif info is not None and info.available:
-            self.status.set_text(f"Update available on {info.branch}: "
-                                 f"{info.current_revision[:8]} → {info.target_revision[:8]}.")
+            self.status.set_text(
+                f"Update available on {info.branch}: "
+                f"{info.current_revision[:8]} → {info.target_revision[:8]}."
+            )
             self.install_button.set_sensitive(True)
             if automatic and self._auto_enabled:
                 self.install()
         elif info is not None:
-            self.status.set_text(f"Up to date on {info.branch} ({info.current_revision[:8]}).")
+            self.status.set_text(
+                f"Up to date on {info.branch} ({info.current_revision[:8]})."
+            )
         return GLib.SOURCE_REMOVE
 
     def install(self) -> None:
@@ -143,8 +152,10 @@ class UpdatePanel(Gtk.Box):
         self.info = None
         self.restart_required = not bool(error)
         self.check_button.set_sensitive(bool(error))
-        message = error or ("Update installed. Save your draft, then restart CornerNote "
-                            "to use the new version.")
+        message = error or (
+            "Update installed. Save your draft, then restart CornerNote "
+            "to use the new version."
+        )
         self.status.set_text(message)
         self.notify(message)
         return GLib.SOURCE_REMOVE

@@ -29,16 +29,23 @@ def apply_spans(buffer: Gtk.TextBuffer, spans: tuple[Span, ...]) -> None:
     install_tags(buffer)
     start, end = buffer.get_bounds()
     buffer.get_tag_table().foreach(
-        lambda tag, *_: buffer.remove_tag(tag, start, end)
-        if (tag.get_property("name") or "").startswith("md-") else None)
+        lambda tag, *_: (
+            buffer.remove_tag(tag, start, end)
+            if (tag.get_property("name") or "").startswith("md-")
+            else None
+        )
+    )
     for span in spans:
-        buffer.apply_tag_by_name(f"md-{span.kind}",
-                                 buffer.get_iter_at_offset(span.start),
-                                 buffer.get_iter_at_offset(span.end))
+        buffer.apply_tag_by_name(
+            f"md-{span.kind}",
+            buffer.get_iter_at_offset(span.start),
+            buffer.get_iter_at_offset(span.end),
+        )
 
 
-def show_markdown(buffer: Gtk.TextBuffer, source: str,
-                  rendered: RenderedMarkdown | None = None) -> None:
+def show_markdown(
+    buffer: Gtk.TextBuffer, source: str, rendered: RenderedMarkdown | None = None
+) -> None:
     """Fill a read-only viewer with formatted text and hidden Markdown syntax."""
     rendered = rendered or render_markdown(source)
     buffer.set_text(rendered.text)

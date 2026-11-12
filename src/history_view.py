@@ -41,8 +41,10 @@ class HistoryPage(Gtk.Box):
         refresh.connect("clicked", lambda *_: self.refresh())
         actions.pack_end(refresh, False, False, 0)
         listing.pack_start(actions, False, False, 0)
-        hint = Gtk.Label(label=f"Latest {DEFAULT_HISTORY_LIMIT} Markdown files · newest first",
-                         xalign=0)
+        hint = Gtk.Label(
+            label=f"Latest {DEFAULT_HISTORY_LIMIT} Markdown files · newest first",
+            xalign=0,
+        )
         hint.set_line_wrap(True)
         listing.pack_start(hint, False, False, 0)
         self.list_status = Gtk.Label(xalign=0)
@@ -114,8 +116,9 @@ class HistoryPage(Gtk.Box):
 
         threading.Thread(target=work, daemon=True).start()
 
-    def _finish_loading(self, generation: int, notes: list[SavedNote],
-                        error: str) -> bool:
+    def _finish_loading(
+        self, generation: int, notes: list[SavedNote], error: str
+    ) -> bool:
         if self._destroyed or generation != self._generation:
             return GLib.SOURCE_REMOVE
         self.loading = False
@@ -126,9 +129,12 @@ class HistoryPage(Gtk.Box):
             content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             content.set_border_width(5)
             content.pack_start(self._short_label(note.title), False, False, 0)
-            date = dt.datetime.fromtimestamp(note.modified_ns / 1e9).strftime("%Y-%m-%d %H:%M")
-            content.pack_start(self._short_label(f"{note.path.as_posix()} · {date}"),
-                               False, False, 0)
+            date = dt.datetime.fromtimestamp(note.modified_ns / 1e9).strftime(
+                "%Y-%m-%d %H:%M"
+            )
+            content.pack_start(
+                self._short_label(f"{note.path.as_posix()} · {date}"), False, False, 0
+            )
             row.add(content)
             self.list_box.add(row)
         self.list_box.show_all()
@@ -154,7 +160,10 @@ class HistoryPage(Gtk.Box):
         self.list_status.set_visible(bool(message))
 
     def _filter_row(self, row: Gtk.ListBoxRow) -> bool:
-        return self.search_entry.get_text().casefold() in row.note.path.as_posix().casefold()
+        return (
+            self.search_entry.get_text().casefold()
+            in row.note.path.as_posix().casefold()
+        )
 
     def _on_row_activated(self, _list: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
         self._open_note(row.note)
@@ -181,14 +190,21 @@ class HistoryPage(Gtk.Box):
 
         threading.Thread(target=work, daemon=True).start()
 
-    def _finish_reading(self, generation: int, source: str,
-                        rendered: RenderedMarkdown | None, error: str) -> bool:
+    def _finish_reading(
+        self,
+        generation: int,
+        source: str,
+        rendered: RenderedMarkdown | None,
+        error: str,
+    ) -> bool:
         if self._destroyed or generation != self._generation:
             return GLib.SOURCE_REMOVE
         self.reading = False
         if not error:
             show_markdown(self.viewer.get_buffer(), source, rendered)
-            self.viewer.scroll_to_iter(self.viewer.get_buffer().get_start_iter(), 0, False, 0, 0)
+            self.viewer.scroll_to_iter(
+                self.viewer.get_buffer().get_start_iter(), 0, False, 0, 0
+            )
         self.detail_status.set_text(error)
         self.detail_status.set_visible(bool(error))
         return GLib.SOURCE_REMOVE

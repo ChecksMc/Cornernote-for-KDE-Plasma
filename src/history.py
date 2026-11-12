@@ -15,7 +15,6 @@ from pathlib import Path
 import stat
 from typing import Any
 
-
 MAX_NOTE_BYTES = 2 * 1024 * 1024
 DEFAULT_HISTORY_LIMIT = 500
 
@@ -34,15 +33,17 @@ class SavedNote:
 
 
 def _vault_path(config: dict[str, Any]) -> Path:
-    vault = Path(os.path.expandvars(os.path.expanduser(
-        config["default_vault_path"]))).resolve()
+    vault = Path(
+        os.path.expandvars(os.path.expanduser(config["default_vault_path"]))
+    ).resolve()
     if not vault.is_dir():
         raise FileNotFoundError(f"Vault directory does not exist: {vault}")
     return vault
 
 
-def list_notes(config: dict[str, Any],
-               limit: int = DEFAULT_HISTORY_LIMIT) -> list[SavedNote]:
+def list_notes(
+    config: dict[str, Any], limit: int = DEFAULT_HISTORY_LIMIT
+) -> list[SavedNote]:
     """Return up to ``limit`` visible Markdown files, most recently saved first.
 
     Only file metadata is read. Directory read failures are reported to the
@@ -58,33 +59,44 @@ def list_notes(config: dict[str, Any],
 
     def candidates():
         for directory, dirs, files, directory_fd in os.fwalk(
-                vault, follow_symlinks=False, onerror=walk_error):
+            vault, follow_symlinks=False, onerror=walk_error
+        ):
             parent = Path(directory)
-            dirs[:] = sorted(name for name in dirs
-                             if not name.startswith(".")
-                             and not (parent / name).is_symlink())
+            dirs[:] = sorted(
+                name
+                for name in dirs
+                if not name.startswith(".") and not (parent / name).is_symlink()
+            )
             for name in files:
                 path = parent / name
                 if name.startswith(".") or path.suffix.casefold() != ".md":
                     continue
                 try:
-                    metadata = os.stat(name, dir_fd=directory_fd,
-                                       follow_symlinks=False)
+                    metadata = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
                 except FileNotFoundError:
                     continue
                 if stat.S_ISREG(metadata.st_mode):
-                    yield SavedNote(path.relative_to(vault),
-                                    metadata.st_mtime_ns, metadata.st_size)
+                    yield SavedNote(
+                        path.relative_to(vault), metadata.st_mtime_ns, metadata.st_size
+                    )
 
     # Keep a bounded result even for large vaults; do not load file bodies.
-    return heapq.nsmallest(limit, candidates(),
-                          key=lambda note: (-note.modified_ns,
-                                            note.path.as_posix().casefold(),
-                                            note.path.as_posix()))
+    return heapq.nsmallest(
+        limit,
+        candidates(),
+        key=lambda note: (
+            -note.modified_ns,
+            note.path.as_posix().casefold(),
+            note.path.as_posix(),
+        ),
+    )
 
 
-def read_note(config: dict[str, Any], note: SavedNote | str | Path,
-              max_bytes: int = MAX_NOTE_BYTES) -> str:
+def read_note(
+    config: dict[str, Any],
+    note: SavedNote | str | Path,
+    max_bytes: int = MAX_NOTE_BYTES,
+) -> str:
     """Read a vault Markdown file, rechecking its location and size.
 
     Errors propagate so the history page can explain a removed, unreadable,
@@ -97,8 +109,10 @@ def read_note(config: dict[str, Any], note: SavedNote | str | Path,
     if not resolved.is_relative_to(vault):
         raise ValueError("History notes must stay inside the configured vault")
     relative = candidate.relative_to(vault)
-    if (any(part.startswith(".") for part in relative.parts)
-            or candidate.suffix.casefold() != ".md"):
+    if (
+        any(part.startswith(".") for part in relative.parts)
+        or candidate.suffix.casefold() != ".md"
+    ):
         raise ValueError("History only opens visible Markdown files")
     current = vault
     for part in relative.parts:
@@ -113,11 +127,15 @@ def read_note(config: dict[str, Any], note: SavedNote | str | Path,
         directory_fd = os.open(vault, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         directories.callback(os.close, directory_fd)
         for part in relative.parts[:-1]:
-            directory_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
-                                   dir_fd=directory_fd)
+            directory_fd = os.open(
+                part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory_fd
+            )
             directories.callback(os.close, directory_fd)
-        descriptor = os.open(relative.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
-                             dir_fd=directory_fd)
+        descriptor = os.open(
+            relative.name,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+            dir_fd=directory_fd,
+        )
         with os.fdopen(descriptor, "rb") as stream:
             if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                 raise ValueError("History only opens regular Markdown files")
