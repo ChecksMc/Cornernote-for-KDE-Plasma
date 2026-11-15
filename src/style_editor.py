@@ -24,9 +24,13 @@ COLOR_FIELDS: tuple[tuple[str, str], ...] = (
 class StyleEditor(Gtk.Box):
     """Embed theme, color, image, and font controls in the settings page."""
 
-    def __init__(self, config: Config, on_apply: Callable[[Config], None],
-                 on_popup_changed: Callable[[Any, Any], None],
-                 on_chooser_changed: Callable[[bool], None]) -> None:
+    def __init__(
+        self,
+        config: Config,
+        on_apply: Callable[[Config], None],
+        on_popup_changed: Callable[[Any, Any], None],
+        on_chooser_changed: Callable[[bool], None],
+    ) -> None:
         """Create an inline editor and connect popup visibility handling."""
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.config = dict(config)
@@ -54,10 +58,12 @@ class StyleEditor(Gtk.Box):
         outer.pack_start(grid, False, False, 0)
 
         self.source_combo = Gtk.ComboBoxText()
-        for source, label in (("plasma", "Plasma colors"),
-                              ("pywal", "Pywal colors"),
-                              ("fallback", "Built-in theme"),
-                              ("custom", "Custom colors")):
+        for source, label in (
+            ("plasma", "Plasma colors"),
+            ("pywal", "Pywal colors"),
+            ("fallback", "Built-in theme"),
+            ("custom", "Custom colors"),
+        ):
             self.source_combo.append(source, label)
         self.source_combo.connect("changed", self._on_source_changed)
         self.source_combo.connect("notify::popup-shown", self.on_popup_changed)
@@ -83,7 +89,8 @@ class StyleEditor(Gtk.Box):
         self.font_entry = self.font_combo.get_child()
         font_map = PangoCairo.FontMap.get_default()
         self.font_families = tuple(
-            sorted(family.get_name() for family in font_map.list_families()))
+            sorted(family.get_name() for family in font_map.list_families())
+        )
         for family in self.font_families:
             self.font_combo.append_text(family)
         self.font_entry.connect("changed", self._on_font_changed)
@@ -121,10 +128,17 @@ class StyleEditor(Gtk.Box):
         self.preview_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.preview_card.get_style_context().add_class("cn-style-card")
         self.preview.pack_start(self.preview_card, True, True, 0)
-        self.preview_card.pack_start(Gtk.Label(label="Quick note title", xalign=0), False, False, 0)
         self.preview_card.pack_start(
-            Gtk.Label(label="A small preview of your paper and editor colors.", xalign=0),
-            False, False, 0)
+            Gtk.Label(label="Quick note title", xalign=0), False, False, 0
+        )
+        self.preview_card.pack_start(
+            Gtk.Label(
+                label="A small preview of your paper and editor colors.", xalign=0
+            ),
+            False,
+            False,
+            0,
+        )
         self.preview_status = Gtk.Label(label="Ctrl+Enter · Save note", xalign=0)
         self.preview_status.get_style_context().add_class("cn-style-accent")
         self.preview.pack_start(self.preview_status, False, False, 0)
@@ -138,8 +152,9 @@ class StyleEditor(Gtk.Box):
         apply_button.connect("clicked", self._on_apply)
         actions.pack_end(apply_button, False, False, 0)
 
-    def _add_control(self, grid: Gtk.Grid, row: int, label: str,
-                     widget: Gtk.Widget) -> None:
+    def _add_control(
+        self, grid: Gtk.Grid, row: int, label: str, widget: Gtk.Widget
+    ) -> None:
         """Place each appearance control below its label at full available width."""
         text = Gtk.Label(label=label, xalign=0)
         text.set_halign(Gtk.Align.START)
@@ -152,7 +167,9 @@ class StyleEditor(Gtk.Box):
         """Populate all editor controls from the saved configuration."""
         self._loading = True
         self.source_combo.set_active_id(str(self.config.get("theme_source", "plasma")))
-        self.palette_combo.set_active_id(str(self.config.get("theme_fallback", "catppuccin_mocha")))
+        self.palette_combo.set_active_id(
+            str(self.config.get("theme_fallback", "catppuccin_mocha"))
+        )
         current_palette = get_palette(self.config)
         for key, button in self.color_buttons.items():
             rgba = Gdk.RGBA()
@@ -180,8 +197,9 @@ class StyleEditor(Gtk.Box):
         palette: dict[str, str] = {}
         for key, button in self.color_buttons.items():
             rgba = button.get_rgba()
-            red, green, blue = (round(channel * 255) for channel in
-                                (rgba.red, rgba.green, rgba.blue))
+            red, green, blue = (
+                round(channel * 255) for channel in (rgba.red, rgba.green, rgba.blue)
+            )
             palette[key] = f"#{red:02x}{green:02x}{blue:02x}"
         return palette
 
@@ -189,7 +207,9 @@ class StyleEditor(Gtk.Box):
         """Build the temporary config used to render the live preview."""
         config = dict(self.config)
         config["theme_source"] = self.source_combo.get_active_id() or "plasma"
-        config["theme_fallback"] = self.palette_combo.get_active_id() or "catppuccin_mocha"
+        config["theme_fallback"] = (
+            self.palette_combo.get_active_id() or "catppuccin_mocha"
+        )
         config["custom_palette"] = self._current_palette()
         config["font_family"] = self.font_entry.get_text().strip() or "Monospace"
         config["font_size"] = self.font_size.get_value_as_int()
@@ -207,10 +227,12 @@ class StyleEditor(Gtk.Box):
         if self.preview_provider is not None:
             Gtk.StyleContext.remove_provider_for_screen(screen, self.preview_provider)
         provider = Gtk.CssProvider()
-        provider.load_from_data(build_preview_css(self._editor_config()).encode("utf-8"))
+        provider.load_from_data(
+            build_preview_css(self._editor_config()).encode("utf-8")
+        )
         Gtk.StyleContext.add_provider_for_screen(
-            screen, provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+            screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
+        )
         self.preview_provider = provider
 
     def _update_enabled_controls(self) -> None:
@@ -275,10 +297,16 @@ class StyleEditor(Gtk.Box):
         """Open a native image selector for the paper backdrop."""
         parent = self.get_toplevel()
         dialog = Gtk.FileChooserDialog(
-            title="Select paper backdrop", parent=parent,
+            title="Select paper backdrop",
+            parent=parent,
             action=Gtk.FileChooserAction.OPEN,
-            buttons=("Cancel", Gtk.ResponseType.CANCEL,
-                     "Select", Gtk.ResponseType.ACCEPT))
+            buttons=(
+                "Cancel",
+                Gtk.ResponseType.CANCEL,
+                "Select",
+                Gtk.ResponseType.ACCEPT,
+            ),
+        )
         dialog.set_modal(True)
         current = self.image_entry.get_text().strip()
         if current:

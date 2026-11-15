@@ -79,7 +79,7 @@ class GtkUpdateTests(unittest.TestCase):
         window.title_entry.set_text("Keep my draft")
         window.content_buffer.set_text("**Unfinished**")
         draft = replace(window.state.draft)
-        panel = window.update_panel
+        panel = window.settings_page.update_panel
         info = UpdateInfo("a" * 40, "b" * 40, "main")
         main_thread = threading.get_ident()
         worker_threads = []
@@ -111,7 +111,7 @@ class GtkUpdateTests(unittest.TestCase):
         window = self.make_window()
         window.content_buffer.set_text("Keep this text")
         window._show_settings()
-        panel = window.update_panel
+        panel = window.settings_page.update_panel
         self.assertFalse(panel.auto_install.get_active())
         panel.auto_install.set_active(True)
         info = UpdateInfo("a" * 40, "b" * 40, "main")
@@ -132,12 +132,12 @@ class GtkUpdateTests(unittest.TestCase):
         window = self.make_window()
         with patch.object(update_view, "check_for_updates") as check:
             window._show_settings()
-            window.update_panel.auto_install.set_active(True)
+            window.settings_page.update_panel.auto_install.set_active(True)
             window._show_note_page()
             self.settle()
             check.assert_not_called()
         self.assertFalse(window.config["auto_update"])
-        self.assertIsNone(window.update_panel._timer)
+        self.assertIsNone(window.settings_page.update_panel._timer)
 
     def test_enabled_setting_checks_at_startup_and_on_timer(self):
         import update_view
@@ -145,7 +145,7 @@ class GtkUpdateTests(unittest.TestCase):
         info = UpdateInfo("a" * 40, "a" * 40, "main")
         with patch.object(update_view, "check_for_updates", return_value=info) as check, \
                 patch.object(update_view, "install_update") as install:
-            panel = self.make_window(auto_update=True).update_panel
+            panel = self.make_window(auto_update=True).settings_page.update_panel
             self.wait_for(lambda: not panel.busy)
             check.assert_called_once_with()
             self.assertIsNotNone(panel._timer)
@@ -158,7 +158,7 @@ class GtkUpdateTests(unittest.TestCase):
     def test_disabling_automatic_updates_during_check_prevents_install(self):
         import update_view
         from updater import UpdateInfo
-        panel = self.make_window().update_panel
+        panel = self.make_window().settings_page.update_panel
         started, release = threading.Event(), threading.Event()
 
         def delayed_check():
@@ -185,7 +185,7 @@ class GtkUpdateTests(unittest.TestCase):
         from updater import UpdateError, UpdateInfo
         window = self.make_window()
         window.content_buffer.set_text("Preserved draft")
-        panel = window.update_panel
+        panel = window.settings_page.update_panel
         with patch.object(update_view, "check_for_updates", side_effect=UpdateError("Offline")):
             panel.check()
             self.wait_for(lambda: not panel.busy)

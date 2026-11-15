@@ -24,8 +24,9 @@ def parse_date_tag(value: str, base: dt.date | None = None) -> dt.date | None:
     match = re.fullmatch(r"in\s+(\d+)\s+days?", text)
     if match:
         return base + dt.timedelta(days=int(match.group(1)))
-    weekday = next((i for i, day in enumerate(WEEKDAYS)
-                    if text in (day, day + "day")), None)
+    weekday = next(
+        (i for i, day in enumerate(WEEKDAYS) if text in (day, day + "day")), None
+    )
     if weekday is not None:
         offset = (weekday - base.weekday()) % 7 or 7
         return base + dt.timedelta(days=offset)
@@ -61,8 +62,9 @@ def _formatted_date(date_tag: str, date_format: str) -> str | None:
     return note_date.strftime(date_format)
 
 
-def write_note(config: Config, title: str, content: str,
-               date_tag: str = "", folder: str = "") -> Path:
+def write_note(
+    config: Config, title: str, content: str, date_tag: str = "", folder: str = ""
+) -> Path:
     """Append one Markdown entry while preserving drafts on write failures."""
     vault = Path(os.path.expandvars(os.path.expanduser(config["default_vault_path"])))
     if folder and folder != "(root)":
@@ -74,11 +76,15 @@ def write_note(config: Config, title: str, content: str,
     else:
         target_dir = vault
     date_text = _formatted_date(date_tag, config.get("date_format", "%Y-%m-%d"))
-    filename = _safe_filename(config.get("note_filename", "QuickNotes.md"),
-                               date_text or "Undated", title)
+    filename = _safe_filename(
+        config.get("note_filename", "QuickNotes.md"), date_text or "Undated", title
+    )
     path = target_dir / filename
-    heading = (f"# {date_text}: {title.strip() or 'Quick note'}" if date_text else
-               f"# {title.strip() or 'Quick note'}")
+    heading = (
+        f"# {date_text}: {title.strip() or 'Quick note'}"
+        if date_text
+        else f"# {title.strip() or 'Quick note'}"
+    )
     body = content.rstrip()
     entry = f"\n{heading}\n{body}\n" if body else f"\n{heading}\n"
     if not target_dir.is_dir():
@@ -90,10 +96,13 @@ def write_note(config: Config, title: str, content: str,
     return path
 
 
-def append_to_file(config: Config, title_path: str, content: str,
-                   date_tag: str = "", folder: str = "") -> Path:
+def append_to_file(
+    config: Config, title_path: str, content: str, date_tag: str = "", folder: str = ""
+) -> Path:
     """Append a dated Markdown entry to a file path inside the configured vault."""
-    vault = Path(os.path.expandvars(os.path.expanduser(config["default_vault_path"]))).resolve()
+    vault = Path(
+        os.path.expandvars(os.path.expanduser(config["default_vault_path"]))
+    ).resolve()
     if not vault.is_dir():
         raise FileNotFoundError(f"Vault directory does not exist: {vault}")
     base_dir = vault
@@ -102,7 +111,9 @@ def append_to_file(config: Config, title_path: str, content: str,
             raise ValueError("Invalid vault folder selection")
         base_dir = (vault / folder).resolve()
         if not base_dir.is_dir() or not base_dir.is_relative_to(vault):
-            raise ValueError(f"Vault folder does not exist or escapes the vault: {folder}")
+            raise ValueError(
+                f"Vault folder does not exist or escapes the vault: {folder}"
+            )
     supplied_path = Path(os.path.expandvars(os.path.expanduser(title_path.strip())))
     target = supplied_path if supplied_path.is_absolute() else base_dir / supplied_path
     target = target.resolve()
@@ -112,7 +123,9 @@ def append_to_file(config: Config, title_path: str, content: str,
         try:
             target.relative_to(vault)
         except ValueError as exc:
-            raise ValueError("Relative append paths must stay inside the configured vault") from exc
+            raise ValueError(
+                "Relative append paths must stay inside the configured vault"
+            ) from exc
     if not target.parent.is_dir():
         raise FileNotFoundError(f"Parent directory does not exist: {target.parent}")
     date_text = _formatted_date(date_tag, config.get("date_format", "%Y-%m-%d"))
