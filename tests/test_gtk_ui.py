@@ -36,8 +36,9 @@ class GtkUiTests(unittest.TestCase):
         # layer-shell compositor or touching the running CornerNote instance.
         layer = patch.multiple(self.app.LayerShell, **dict.fromkeys((
             "init_for_window", "set_namespace", "set_layer", "set_monitor",
-            "set_anchor", "set_margin", "set_keyboard_interactivity"), DEFAULT))
-        layer.start()
+            "set_anchor", "set_margin", "set_exclusive_zone",
+            "set_keyboard_interactivity"), DEFAULT))
+        self.layer_mocks = layer.start()
         self.addCleanup(layer.stop)
         self.window = None
         self.addCleanup(self.close_window)
@@ -65,6 +66,15 @@ class GtkUiTests(unittest.TestCase):
         self.window = self.app.CornerNote(config)
         self.settle()
         return self.window
+
+    def test_layer_surface_avoids_panels_without_losing_window_priority(self):
+        self.make_window()
+        self.layer_mocks["set_layer"].assert_called_once_with(
+            self.window, self.app.LayerShell.Layer.TOP
+        )
+        self.layer_mocks["set_exclusive_zone"].assert_called_once_with(
+            self.window, 0
+        )
 
     def wait_for(self, predicate):
         deadline = time.monotonic() + 4

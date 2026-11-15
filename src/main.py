@@ -74,8 +74,7 @@ class CornerNote(Gtk.Window):
         self.set_app_paintable(True)
 
         LayerShell.init_for_window(self)
-        LayerShell.set_namespace(self, "cornernote")
-        LayerShell.set_layer(self, LayerShell.Layer.TOP)
+        self._configure_layer_surface()
         self._apply_position(initial=True)
         LayerShell.set_keyboard_interactivity(self, False)
 
@@ -101,6 +100,16 @@ class CornerNote(Gtk.Window):
         self._watch_theme_files()
         self._clock_source = GLib.timeout_add_seconds(30, self._refresh_clock)
         self.settings_page.update_panel.configure(self.config.get("auto_update", False))
+
+    def _configure_layer_surface(self) -> None:
+        """Keep the note above app windows but out of desktop panel space."""
+        LayerShell.set_namespace(self, "cornernote")
+        LayerShell.set_layer(self, LayerShell.Layer.TOP)
+        # A zero exclusive zone tells the compositor to place this surface
+        # around panels that reserve space without reserving space for the
+        # note itself.  This keeps a top/bottom panel in front of the overlay
+        # while preserving the overlay's position above normal windows.
+        LayerShell.set_exclusive_zone(self, 0)
 
     def watch_suspend_resume(self) -> None:
         """Subscribe to logind sleep notifications and restore the layer surface."""
@@ -162,8 +171,7 @@ class CornerNote(Gtk.Window):
         self.dropdown_open = False
         self.file_chooser_open = False
         self.hide()
-        LayerShell.set_namespace(self, "cornernote")
-        LayerShell.set_layer(self, LayerShell.Layer.TOP)
+        self._configure_layer_surface()
         LayerShell.set_keyboard_interactivity(self, self.expanded)
         self.active_monitor = None
         self._apply_position(initial=True)
