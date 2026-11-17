@@ -1,0 +1,5 @@
+# Keep GitHub "Source code" archives (git archive) small: the README demo is
+# only needed on the repository page, not in an installation.
+docs/ export-ignore
+.github/ export-ignore
+*.gif binary

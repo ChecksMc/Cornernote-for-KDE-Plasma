@@ -67,7 +67,7 @@ class GtkUiTests(unittest.TestCase):
         self.settle()
         return self.window
 
-    def test_layer_surface_avoids_panels_without_losing_window_priority(self):
+    def test_layer_surface_reserves_no_space_and_starts_below_panels(self):
         self.make_window()
         self.layer_mocks["set_layer"].assert_called_once_with(
             self.window, self.app.LayerShell.Layer.TOP
@@ -75,6 +75,38 @@ class GtkUiTests(unittest.TestCase):
         self.layer_mocks["set_exclusive_zone"].assert_called_once_with(
             self.window, 0
         )
+
+    def test_auto_stacking_raises_above_panels_only_while_open(self):
+        window = self.make_window(layer="auto")
+        layers = self.app.LayerShell.Layer
+        set_layer = self.layer_mocks["set_layer"]
+        # Finish animations immediately; margins are not under test here.
+        with patch.object(window, "_animate_to",
+                          side_effect=lambda _target, on_done=None:
+                          on_done and on_done()):
+            set_layer.reset_mock()
+            window.expand()
+            set_layer.assert_called_once_with(window, layers.OVERLAY)
+            set_layer.reset_mock()
+            window.collapse()
+            set_layer.assert_called_once_with(window, layers.TOP)
+
+    def test_fixed_stacking_modes_do_not_change_on_expand(self):
+        layers = self.app.LayerShell.Layer
+        for mode, layer in (("overlay", layers.OVERLAY), ("top", layers.TOP)):
+            with self.subTest(layer=mode):
+                window = self.make_window(layer=mode)
+                set_layer = self.layer_mocks["set_layer"]
+                set_layer.assert_called_once_with(window, layer)
+                with patch.object(window, "_animate_to",
+                                  side_effect=lambda _target, on_done=None:
+                                  on_done and on_done()):
+                    window.expand()
+                    window.collapse()
+                set_layer.assert_called_once_with(window, layer)
+                self.close_window()
+                self.window = None
+                set_layer.reset_mock()
 
     def wait_for(self, predicate):
         deadline = time.monotonic() + 4

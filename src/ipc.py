@@ -58,7 +58,7 @@ def send_command(socket_path: str | os.PathLike[str], command: str = "toggle") -
     """Send a command and raise when the daemon is unavailable or rejects it."""
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.settimeout(1.5)
-        client.connect(socket_path)
+        client.connect(os.fspath(socket_path))
         client.sendall((command + "\n").encode("utf-8"))
         response = client.recv(128).decode("utf-8", "replace").strip()
         if response != "ok":

@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     import gi
@@ -62,6 +62,9 @@ class CornerNote(Gtk.Window):
         self.position_vertical_edge = LayerShell.Edge.TOP
         self.position_vertical_base = 0
         self.active_monitor: Any | None = None
+        self.current_layer: Any | None = None
+        self.theme_monitors: list[Gio.FileMonitor] = []
+        self.active_search_dialog: Gtk.FileChooserDialog | None = None
         self._updating_append_controls = False
         self._title_was_filepath = False
 
@@ -102,14 +105,34 @@ class CornerNote(Gtk.Window):
         self.settings_page.update_panel.configure(self.config.get("auto_update", False))
 
     def _configure_layer_surface(self) -> None:
-        """Keep the note above app windows but out of desktop panel space."""
+        """Set up the layer surface; stacking is applied by ``_sync_layer``."""
         LayerShell.set_namespace(self, "cornernote")
-        LayerShell.set_layer(self, LayerShell.Layer.TOP)
-        # A zero exclusive zone tells the compositor to place this surface
-        # around panels that reserve space without reserving space for the
-        # note itself.  This keeps a top/bottom panel in front of the overlay
-        # while preserving the overlay's position above normal windows.
+        # Do not reserve screen space for the note. A zero zone only avoids
+        # other layer-shell surfaces: Plasma's own panels are not layer-shell
+        # surfaces, so the stacking layer decides whether panels cover it.
         LayerShell.set_exclusive_zone(self, 0)
+        self.current_layer = None
+        self._sync_layer()
+
+    def _desired_layer(self) -> Any:
+        """Return the layer for the configured stacking mode and open state.
+
+        KWin stacks layer-shell ``TOP`` surfaces below Plasma panels (and below
+        fullscreen windows) and ``OVERLAY`` surfaces above them. ``auto``
+        raises the note only while it is open, so the collapsed tab never
+        covers panels or fullscreen applications.
+        """
+        mode = self.config.get("layer", "auto")
+        if mode == "overlay" or (mode == "auto" and self.expanded):
+            return LayerShell.Layer.OVERLAY
+        return LayerShell.Layer.TOP
+
+    def _sync_layer(self) -> None:
+        """Apply the desired stacking layer when it differs from the current one."""
+        layer = self._desired_layer()
+        if layer != self.current_layer:
+            LayerShell.set_layer(self, layer)
+            self.current_layer = layer
 
     def watch_suspend_resume(self) -> None:
         """Subscribe to logind sleep notifications and restore the layer surface."""
@@ -153,6 +176,7 @@ class CornerNote(Gtk.Window):
             self.pointer_inside = False
             self.expanded = self.state.forced_open
             LayerShell.set_keyboard_interactivity(self, self.expanded)
+            self._sync_layer()
             return
         if self.resume_source is not None:
             GLib.source_remove(self.resume_source)
@@ -178,7 +202,7 @@ class CornerNote(Gtk.Window):
         self.show()
         if self.state.forced_open:
             self.present()
-            self._animate_to(self.position_vertical_base)
+            self._animate_to(self.position_vertical_base, on_done=self._sync_layer)
         self._refresh_clock()
         return GLib.SOURCE_REMOVE
 
@@ -221,9 +245,8 @@ class CornerNote(Gtk.Window):
 
     def _apply_position(self, initial: bool = False) -> None:
         """Anchor to a 3x3 screen reference, then apply signed pixel offsets."""
-        if hasattr(self, "animation_source"):
-            self._stop_animation()
-        display, monitor, _monitor_index = self._monitor_selection()
+        self._stop_animation()
+        _display, monitor, _monitor_index = self._monitor_selection()
         if monitor is not None:
             if initial or monitor != self.active_monitor:
                 LayerShell.set_monitor(self, monitor)
@@ -535,6 +558,7 @@ class CornerNote(Gtk.Window):
         self.settings_page.set_width(new_config["width"])
         self._refresh_folder_choices()
         self._refresh_css()
+        self._sync_layer()
         self.settings_page.status.set_text("Settings saved.")
         self._show_note_page()
         return True
@@ -583,7 +607,6 @@ class CornerNote(Gtk.Window):
 
     def _watch_theme_files(self) -> None:
         """Watch KDE and Pywal palette files without polling."""
-        self.theme_monitors: list[Any] = []
         config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
         cache_home = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
         for directory in (config_home, cache_home / "wal"):
@@ -601,7 +624,7 @@ class CornerNote(Gtk.Window):
     def _on_theme_file_changed(self, _monitor: Any, file: Any, *_args: Any) -> None:
         """Schedule a coalesced style refresh after a palette change."""
         if file and file.get_basename() in ("kdeglobals", "colors.json"):
-            if getattr(self, "theme_refresh_source", None):
+            if self.theme_refresh_source is not None:
                 GLib.source_remove(self.theme_refresh_source)
             self.theme_refresh_source = GLib.timeout_add(
                 180, self._refresh_css_debounced
@@ -631,8 +654,11 @@ class CornerNote(Gtk.Window):
         """Install the initial theme on the default GDK screen."""
         self.css_provider = Gtk.CssProvider()
         self.css_provider.load_from_data(build_css(self.config).encode("utf-8"))
+        screen = Gdk.Screen.get_default()
+        if screen is None:
+            raise RuntimeError("No default GDK screen is available")
         Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(),
+            screen,
             self.css_provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
@@ -772,8 +798,10 @@ class CornerNote(Gtk.Window):
             self._schedule_collapse()
         return False
 
-    def _animate_to(self, target: int) -> None:
-        """Animate the active edge margin using GTK timeout callbacks."""
+    def _animate_to(
+        self, target: int, on_done: Callable[[], None] | None = None
+    ) -> None:
+        """Animate the active edge margin; call ``on_done`` once it arrives."""
         self._stop_animation()
         edge = self.position_vertical_edge
         current = LayerShell.get_margin(self, edge)
@@ -792,6 +820,8 @@ class CornerNote(Gtk.Window):
             LayerShell.set_margin(self, edge, value)
             if progress >= 1.0:
                 self.animation_source = None
+                if on_done is not None:
+                    on_done()
                 return GLib.SOURCE_REMOVE
             return GLib.SOURCE_CONTINUE
 
@@ -835,7 +865,9 @@ class CornerNote(Gtk.Window):
         """Reveal the overlay and optionally focus the active editor."""
         self.expanded = True
         LayerShell.set_keyboard_interactivity(self, True)
-        self._animate_to(self.position_vertical_base)
+        # Raise after sliding out so the note emerges from behind a panel on
+        # the same edge instead of drawing its hidden part over the panel.
+        self._animate_to(self.position_vertical_base, on_done=self._sync_layer)
         if not focus or self.page_stack.get_visible_child_name() == "settings":
             return
         if self.page_stack.get_visible_child_name() == "history":
@@ -855,6 +887,8 @@ class CornerNote(Gtk.Window):
         self._cancel_collapse()
         self.expanded = False
         LayerShell.set_keyboard_interactivity(self, False)
+        # Lower before sliding away so the collapsing note tucks behind panels.
+        self._sync_layer()
         self._animate_to(self.idle_margin())
 
     def force_open(self) -> None:
@@ -872,7 +906,10 @@ class CornerNote(Gtk.Window):
 
     def toggle(self) -> None:
         """Toggle the forced-open state for IPC commands."""
-        self.force_close() if self.state.forced_open else self.force_open()
+        if self.state.forced_open:
+            self.force_close()
+        else:
+            self.force_open()
 
     def _on_key(self, _widget: Any, event: Any) -> bool:
         """Handle shortcuts directly when GTK does not activate an accelerator."""

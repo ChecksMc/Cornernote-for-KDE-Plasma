@@ -25,7 +25,7 @@ A slim GTK quick-note overlay for KDE Plasma on Wayland — peek, type, and save
 ## Requirements
 
 - KDE Plasma running a Wayland session with layer-shell support
-- Python 3, PyGObject, GTK 3, Cairo, and gtk-layer-shell
+- Python 3.10 or newer, PyGObject, GTK 3, Cairo, and gtk-layer-shell
 - An Obsidian vault writable by your user
 
 `install.sh` detects APT, DNF, Pacman, or Zypper and installs missing system
@@ -40,18 +40,40 @@ sudo dnf install python3 python3-gobject python3-cairo gtk-layer-shell
 The overlay cannot run as a layer-shell surface on X11. Check with
 `printf '%s\n' "$XDG_SESSION_TYPE"` and use a Wayland Plasma session.
 
-CornerNote uses the layer-shell **top** layer so it stays above normal windows
-while panels can appear in front of it. KWin's `wlr-layer-shell` implementation
-has known quirks around fullscreen windows, and behavior may differ between
-Plasma 5.x and 6.x. Check the [KDE bug tracker query for
+### Panels and stacking
+
+KWin draws layer-shell surfaces on the **top** layer *below* Plasma panels and
+fullscreen windows, and surfaces on the **overlay** layer above them. The
+**Stacking** setting (`"layer"` in the config) picks the behavior:
+
+| Setting | Config value | Open note | Collapsed tab |
+| --- | --- | --- | --- |
+| Above panels while open *(default)* | `auto` | above panels | behind panels and fullscreen windows |
+| Always above panels | `overlay` | above panels | above panels and fullscreen windows |
+| Below panels | `top` | behind panels | behind panels |
+
+If a panel sits on the same screen edge as the note, the collapsed tab is
+hidden behind it with the default setting. Either set **Y offset** to the
+panel's thickness (for example `44` for a top panel, `-44` for a bottom one)
+so the tab peeks out just past the panel, or choose **Always above panels**.
+Keyboard shortcuts open the note above panels in every mode except
+**Below panels**.
+
+KWin's `wlr-layer-shell` implementation has known quirks, and behavior may
+differ between Plasma 5.x and 6.x. Check the [KDE bug tracker query for
 `wlr-layer-shell`](https://bugs.kde.org/buglist.cgi?quicksearch=wlr-layer-shell)
 for the current status.
 
 ## Install
 
 ```sh
+git clone --depth 1 https://github.com/ChecksMc/Cornernote-for-KDE-Plasma.git
+cd Cornernote-for-KDE-Plasma
 ./install.sh
 ```
+
+A shallow clone (`--depth 1`) skips old revisions of the README demo GIF and
+still works with the built-in updater.
 
 The installer installs missing dependencies when it recognizes your package
 manager, then installs a user-level launcher and starts CornerNote through a
@@ -183,8 +205,13 @@ your own Obsidian vault before saving notes.
 Settings are grouped into display and position, vault and files, animation,
 appearance, and updates sections. Expand **Appearance and style** to open the
 embedded editor. It previews the style and offers Plasma colors, Pywal colors, ten
-built-in palettes, editable custom colors, installed font families and font
-size, a local image backdrop, and rounded paper corners. The selected style is
+built-in palettes, editable custom colors (paper, text, accent, borders, editor
+surface, buttons, and button text), installed font families and font size, a
+local image backdrop, and rounded paper corners. With Plasma colors, buttons
+follow the color scheme's button colors; built-in palettes use the editor
+surface color. The **Submit** and **Save** buttons always use the accent
+color. Configs saved before button colors existed keep their custom palette and
+gain matching button colors automatically. The selected style is
 saved to `config.json` and applied to the overlay. By default, colors follow
 Plasma's `kdeglobals` palette, which CornerNote watches for changes. Text
 contrast is corrected when a selected palette would make note text hard to
@@ -212,7 +239,8 @@ The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms
 - `corner-note` — IPC command-line client and standalone update commands
 - `install.sh` — multi-distro dependency and user installation
 - `uninstall.sh` — removes startup entries and launchers, optionally config
-- `packaging/bundle.py` — builds a distributable `CornerNote.zip`
+- `packaging/bundle.py` — builds a distributable `CornerNote.zip` (sources
+  only; no docs media)
 
 ## Development and troubleshooting
 
@@ -221,10 +249,11 @@ second terminal use `./corner-note toggle`. Inspect service logs with
 `journalctl --user -u cornernote -f`. The socket defaults to
 `$XDG_RUNTIME_DIR/cornernote.sock`, which is private to the login session.
 
-CornerNote does not use the higher overlay layer, allowing panels above it to
-cover the note while it slides. Fullscreen handling still depends on KWin's
-layer-shell policy; the app does not poll KWin state or promise fullscreen
-suppression.
+With the default stacking, the note moves to the overlay layer only after it
+finishes sliding open and back to the top layer as soon as it starts to
+collapse, so it emerges from behind a panel instead of sliding over it. See
+[Panels and stacking](#panels-and-stacking). Fullscreen handling depends on
+KWin's layer-shell policy; the app does not poll KWin state.
 
 CornerNote listens for systemd-logind sleep and wake notifications. On resume it
 recreates the Wayland layer surface and reapplies the selected screen and

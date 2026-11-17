@@ -10,7 +10,13 @@ import gi
 gi.require_version("PangoCairo", "1.0")
 from gi.repository import Gdk, Gtk, PangoCairo
 
-from style import Config, PALETTES, build_preview_css, get_palette, palette_options
+from style import (
+    Config,
+    builtin_palette,
+    build_preview_css,
+    get_palette,
+    palette_options,
+)
 
 COLOR_FIELDS: tuple[tuple[str, str], ...] = (
     ("background", "Paper"),
@@ -18,6 +24,8 @@ COLOR_FIELDS: tuple[tuple[str, str], ...] = (
     ("accent", "Accent"),
     ("muted", "Border and labels"),
     ("card", "Editor surface"),
+    ("button", "Buttons"),
+    ("button_text", "Button text"),
 )
 
 
@@ -76,12 +84,15 @@ class StyleEditor(Gtk.Box):
         self.palette_combo.connect("notify::popup-shown", self.on_popup_changed)
         self._add_control(grid, 1, "Built-in palette", self.palette_combo)
 
-        for row, (key, label) in enumerate(COLOR_FIELDS, start=2):
+        row = 2
+        for key, label in COLOR_FIELDS:
             color_button = Gtk.ColorButton()
             color_button.set_use_alpha(False)
+            color_button.set_title(label)
             color_button.connect("color-set", self._on_color_changed)
             self.color_buttons[key] = color_button
             self._add_control(grid, row, label, color_button)
+            row += 1
 
         self.font_combo = Gtk.ComboBoxText.new_with_entry()
         self.font_combo.set_entry_text_column(0)
@@ -94,11 +105,13 @@ class StyleEditor(Gtk.Box):
         for family in self.font_families:
             self.font_combo.append_text(family)
         self.font_entry.connect("changed", self._on_font_changed)
-        self._add_control(grid, 7, "Font family", self.font_combo)
+        self._add_control(grid, row, "Font family", self.font_combo)
+        row += 1
         self.font_size = Gtk.SpinButton.new_with_range(8, 28, 1)
         self.font_size.set_numeric(True)
         self.font_size.connect("value-changed", self._on_font_size_changed)
-        self._add_control(grid, 8, "Font size", self.font_size)
+        self._add_control(grid, row, "Font size", self.font_size)
+        row += 1
 
         image_row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
         self.image_entry = Gtk.Entry()
@@ -110,11 +123,12 @@ class StyleEditor(Gtk.Box):
         browse.connect("clicked", self._on_browse_image)
         image_actions.pack_end(browse, False, False, 0)
         image_row.pack_start(image_actions, False, False, 0)
-        self._add_control(grid, 9, "Backdrop image", image_row)
+        self._add_control(grid, row, "Backdrop image", image_row)
+        row += 1
 
         self.rounded_toggle = Gtk.CheckButton(label="Use rounded paper corners")
         self.rounded_toggle.connect("toggled", self._on_rounding_changed)
-        self._add_control(grid, 10, "Paper shape", self.rounded_toggle)
+        self._add_control(grid, row, "Paper shape", self.rounded_toggle)
 
         preview_frame = Gtk.Frame(label="Live preview")
         outer.pack_start(preview_frame, True, True, 0)
@@ -142,6 +156,16 @@ class StyleEditor(Gtk.Box):
         self.preview_status = Gtk.Label(label="Ctrl+Enter · Save note", xalign=0)
         self.preview_status.get_style_context().add_class("cn-style-accent")
         self.preview.pack_start(self.preview_status, False, False, 0)
+        # Sample buttons are inert; they only show the button colors.
+        preview_buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        sample_button = Gtk.Button(label="History")
+        sample_primary = Gtk.Button(label="Submit")
+        sample_primary.get_style_context().add_class("cn-style-primary")
+        for sample in (sample_button, sample_primary):
+            sample.set_focus_on_click(False)
+            sample.set_can_focus(False)
+            preview_buttons.pack_start(sample, False, False, 0)
+        self.preview.pack_start(preview_buttons, False, False, 0)
 
         self.status = Gtk.Label(xalign=0)
         outer.pack_start(self.status, False, False, 0)
@@ -170,11 +194,7 @@ class StyleEditor(Gtk.Box):
         self.palette_combo.set_active_id(
             str(self.config.get("theme_fallback", "catppuccin_mocha"))
         )
-        current_palette = get_palette(self.config)
-        for key, button in self.color_buttons.items():
-            rgba = Gdk.RGBA()
-            rgba.parse(str(current_palette.get(key, PALETTES["catppuccin_mocha"][key])))
-            button.set_rgba(rgba)
+        self._show_palette(get_palette(self.config))
         self.font_name = str(self.config.get("font_family", "Monospace"))
         if self.font_name not in self.font_families:
             self.font_combo.append_text(self.font_name)
@@ -186,6 +206,13 @@ class StyleEditor(Gtk.Box):
         self._loading = False
         self._update_enabled_controls()
         self._refresh_preview()
+
+    def _show_palette(self, palette: dict[str, str]) -> None:
+        """Display a complete palette in the color buttons."""
+        for key, button in self.color_buttons.items():
+            rgba = Gdk.RGBA()
+            rgba.parse(palette[key])
+            button.set_rgba(rgba)
 
     def set_config(self, config: Config) -> None:
         """Replace the editor baseline with the overlay's latest settings."""
@@ -255,10 +282,7 @@ class StyleEditor(Gtk.Box):
             return
         palette_id = self.palette_combo.get_active_id() or "catppuccin_mocha"
         self._loading = True
-        for key, button in self.color_buttons.items():
-            rgba = Gdk.RGBA()
-            rgba.parse(PALETTES[palette_id][key])
-            button.set_rgba(rgba)
+        self._show_palette(builtin_palette(palette_id))
         self.source_combo.set_active_id("fallback")
         self._loading = False
         self._update_enabled_controls()

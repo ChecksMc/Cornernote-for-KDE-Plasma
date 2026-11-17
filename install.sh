@@ -70,17 +70,28 @@ mkdir -p "${BIN_DIR}" "${CONFIG_DIR}" "${APP_DIR}"
 if [[ ! -e "${CONFIG_DIR}/config.json" ]]; then
   install -m 0644 "${PROJECT_DIR}/config.example.json" "${CONFIG_DIR}/config.json"
 fi
+# Only restore missing execute bits (e.g. after extracting a ZIP). Changing
+# modes Git already tracks would make the built-in updater see local changes.
+for executable in corner-note install.sh uninstall.sh src/main.py; do
+  [[ -x "${PROJECT_DIR}/${executable}" ]] || chmod 0755 "${PROJECT_DIR}/${executable}"
+done
 ln -sfn "${PROJECT_DIR}/corner-note" "${BIN_DIR}/corner-note"
+printf -v MAIN_SCRIPT '%q' "${PROJECT_DIR}/src/main.py"
 cat > "${BIN_DIR}/cornernote-daemon" <<EOF
 #!/usr/bin/env bash
 export CORNERNOTE_CONFIG="\${XDG_CONFIG_HOME:-\${HOME}/.config}/cornernote/config.json"
-exec /usr/bin/env python3 "${PROJECT_DIR}/src/main.py"
+exec /usr/bin/env python3 ${MAIN_SCRIPT}
 EOF
 chmod 0755 "${BIN_DIR}/cornernote-daemon"
 
-sed "s|^Exec=.*|Exec=${BIN_DIR}/corner-note toggle|" \
-  "${PROJECT_DIR}/cornernote.desktop" > "${APP_DIR}/cornernote.desktop"
-chmod 0755 "${PROJECT_DIR}/corner-note" "${PROJECT_DIR}/install.sh"
+# Quote the launcher so desktop entries work when the path contains spaces.
+while IFS= read -r line; do
+  if [[ "${line}" == Exec=* ]]; then
+    printf 'Exec="%s" toggle\n' "${BIN_DIR}/corner-note"
+  else
+    printf '%s\n' "${line}"
+  fi
+done < "${PROJECT_DIR}/cornernote.desktop" > "${APP_DIR}/cornernote.desktop"
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
   mkdir -p "${UNIT_DIR}"
   cat > "${UNIT_DIR}/cornernote.service" <<EOF
@@ -91,7 +102,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=${BIN_DIR}/cornernote-daemon
+ExecStart="${BIN_DIR}/cornernote-daemon"
 Restart=on-failure
 RestartSec=2
 Environment=PYTHONUNBUFFERED=1
@@ -102,7 +113,12 @@ EOF
   rm -f "${AUTOSTART_DIR}/cornernote-daemon.desktop"
   systemctl --user daemon-reload
   systemctl --user enable cornernote.service
-  START_INSTRUCTIONS="systemctl --user start cornernote"
+  if systemctl --user is-active --quiet cornernote.service; then
+    # Never restart automatically: that would discard an unsaved draft.
+    START_INSTRUCTIONS="systemctl --user restart cornernote  (save any open draft first)"
+  else
+    START_INSTRUCTIONS="systemctl --user start cornernote"
+  fi
 else
   mkdir -p "${AUTOSTART_DIR}"
   cat > "${AUTOSTART_DIR}/cornernote-daemon.desktop" <<EOF
