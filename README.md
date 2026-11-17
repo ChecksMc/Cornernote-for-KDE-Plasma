@@ -9,12 +9,20 @@ A slim GTK quick-note overlay for KDE Plasma on Wayland — peek, type, and save
 
 ## Features
 
-- **Slide-in overlay**: hovers from any screen edge, collapses out of the way
-- **Live theming**: follows your KDE/Plasma palette or Pywal colors automatically
-- **History browser**: search and read the last 500 vault notes without leaving the overlay
-- **Markdown preview**: renders bold, italic, lists, code, and more while you edit
-- **Keyboard shortcuts**: full shortcut coverage, bindable KDE global shortcut (e.g. Meta+N)
-- **Multi-monitor support**: pick your screen and position in settings
+- **Slide-in quick-note overlay**: peek from a screen edge, expand on hover or
+  shortcut, and collapse without losing the current draft
+- **Obsidian Markdown workflows**: save dated notes, append to existing files,
+  choose vault folders, or leave the date off
+- **History browser**: search the latest 500 vault notes and read their
+  formatted contents without leaving the overlay
+- **Markdown editing and preview**: format headings, bold, italic, and
+  underline; preview lists, quotes, links, code, and other supported syntax
+- **Appearance editor**: follow KDE or Pywal colors, choose built-in palettes,
+  edit colors and fonts, or add a local image backdrop
+- **Keyboard and display controls**: shortcuts, KDE global shortcut support,
+  multi-monitor selection, edge position, size, and stacking options
+- **Updates and recovery**: check or install fast-forward updates, opt into
+  automatic updates, and restore the overlay after suspend/resume
 
 > **Platform:** KDE Plasma 5.x / 6.x, Wayland session with `wlr-layer-shell`.  
 > Does not support GNOME, X11, or non-layer-shell compositors.
@@ -65,6 +73,9 @@ KWin's `wlr-layer-shell` implementation has known quirks, and behavior may
 differ between Plasma 5.x and 6.x. Check the [KDE bug tracker query for
 `wlr-layer-shell`](https://bugs.kde.org/buglist.cgi?quicksearch=wlr-layer-shell)
 for the current status.
+
+**Krohnkite workaround:** Set CornerNote's **Stacking** mode to **Always above
+panels** (`overlay`).
 
 ## Install
 
@@ -265,7 +276,22 @@ the overlay continues to run normally but cannot perform this resume recovery.
 
 ## Roadmap / Known Limitations
 
-GTK 3 is in maintenance mode. A port to GTK 4 or Qt is a long-term consideration.
+GTK 3 is in maintenance mode. The roadmap is to move CornerNote to Qt and grow
+desktop support through tested platform integrations:
+
+- **v2.0.0 — Qt and cross-desktop foundations:** port the current KDE interface
+  to Qt, separate desktop/compositor-specific behavior from the core app, and
+  publish a support matrix for tested desktop and window-manager combinations.
+  Add combinations incrementally; a Qt port by itself does not guarantee that
+  every compositor supports CornerNote's overlay behavior.
+- **v2.1.0 — Draft tabs and recovery:** keep multiple independent drafts open
+  and switch between them. Add local autosave and recovery so drafts survive
+  restarts and crashes without silently writing unfinished text into the vault.
+- **v3.0.0 — Edit saved files from History:** turn the read-only history view
+  into an editor for existing Markdown files, with explicit saves and safeguards
+  for files changed outside CornerNote.
+- **v3.1.0 — Autosave edited files:** extend autosave to edits of saved vault
+  notes, building on the file-editing workflow introduced in v3.0.0.
 
 ## Known Issues
 
