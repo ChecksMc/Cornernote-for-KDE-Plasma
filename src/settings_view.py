@@ -60,6 +60,15 @@ class SettingsPage(Gtk.Box):
                     "Vertical",
                     (("top", "Top"), ("center", "Center"), ("bottom", "Bottom")),
                 ),
+                (
+                    "layer",
+                    "Stacking",
+                    (
+                        ("bottom", "Below panels and windows (default)"),
+                        ("auto", "Above panels while open"),
+                        ("overlay", "Always above panels"),
+                    ),
+                ),
             )
         ):
             combo = Gtk.ComboBoxText()
@@ -76,11 +85,17 @@ class SettingsPage(Gtk.Box):
                 ("height", "Height (px)", 180, 1200, 20),
                 ("idle_percent", "Idle tab (%)", 1, 50, 1),
             ),
-            start=3,
+            start=4,
         ):
             self._add_spin(display, row, label, key, minimum, maximum, step)
         self.fields["offset_y"].set_tooltip_text(
             "The offset is limited near the top or bottom edge so the idle tab stays visible."
+        )
+        self.fields["layer"].set_tooltip_text(
+            "Below panels also puts the note behind regular app windows. "
+            "Above panels while open raises the note only after it finishes "
+            "sliding out. If a panel shares the note's edge, set the Y offset "
+            "to the panel's thickness, or choose Always above panels."
         )
         self.fields["position_vertical"].connect(
             "changed", self._update_y_offset_limits
@@ -190,6 +205,7 @@ class SettingsPage(Gtk.Box):
         fields["position_vertical"].set_active_id(
             config.get("position_vertical", "top")
         )
+        fields["layer"].set_active_id(config.get("layer", "bottom"))
         fields["offset_x"].set_value(config.get("offset_x", 0))
         fields["offset_y"].set_value(config.get("offset_y", 0))
         fields["width"].set_value(config["width"])
@@ -223,6 +239,7 @@ class SettingsPage(Gtk.Box):
         updated["position_vertical"] = (
             fields["position_vertical"].get_active_id() or "top"
         )
+        updated["layer"] = fields["layer"].get_active_id() or "bottom"
         updated["auto_update"] = self.update_panel.auto_install.get_active()
         updated["monitor"] = fields["monitor"].get_active_id() or "primary"
         return updated

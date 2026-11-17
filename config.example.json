@@ -20,13 +20,16 @@
   "theme_fallback": "catppuccin_mocha",
   "background_image": "",
   "rounded_corners": false,
+  "layer": "bottom",
   "auto_update": false,
   "custom_palette": {
     "background": "#1e1e2e",
     "foreground": "#cdd6f4",
     "accent": "#89b4fa",
     "muted": "#6c7086",
-    "card": "#313244"
+    "card": "#313244",
+    "button": "#313244",
+    "button_text": "#cdd6f4"
   },
   "folders": []
 }

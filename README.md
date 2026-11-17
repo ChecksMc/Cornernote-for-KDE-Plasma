@@ -9,12 +9,20 @@ A slim GTK quick-note overlay for KDE Plasma on Wayland — peek, type, and save
 
 ## Features
 
-- **Slide-in overlay**: hovers from any screen edge, collapses out of the way
-- **Live theming**: follows your KDE/Plasma palette or Pywal colors automatically
-- **History browser**: search and read the last 500 vault notes without leaving the overlay
-- **Markdown preview**: renders bold, italic, lists, code, and more while you edit
-- **Keyboard shortcuts**: full shortcut coverage, bindable KDE global shortcut (e.g. Meta+N)
-- **Multi-monitor support**: pick your screen and position in settings
+- **Slide-in quick-note overlay**: peek from a screen edge, expand on hover or
+  shortcut, and collapse without losing the current draft
+- **Obsidian Markdown workflows**: save dated notes, append to existing files,
+  choose vault folders, or leave the date off
+- **History browser**: search the latest 500 vault notes and read their
+  formatted contents without leaving the overlay
+- **Markdown editing and preview**: format headings, bold, italic, and
+  underline; preview lists, quotes, links, code, and other supported syntax
+- **Appearance editor**: follow KDE or Pywal colors, choose built-in palettes,
+  edit colors and fonts, or add a local image backdrop
+- **Keyboard and display controls**: shortcuts, KDE global shortcut support,
+  multi-monitor selection, edge position, size, and stacking options
+- **Updates and recovery**: check or install fast-forward updates, opt into
+  automatic updates, and restore the overlay after suspend/resume
 
 > **Platform:** KDE Plasma 5.x / 6.x, Wayland session with `wlr-layer-shell`.  
 > Does not support GNOME, X11, or non-layer-shell compositors.
@@ -25,7 +33,7 @@ A slim GTK quick-note overlay for KDE Plasma on Wayland — peek, type, and save
 ## Requirements
 
 - KDE Plasma running a Wayland session with layer-shell support
-- Python 3, PyGObject, GTK 3, Cairo, and gtk-layer-shell
+- Python 3.10 or newer, PyGObject, GTK 3, Cairo, and gtk-layer-shell
 - An Obsidian vault writable by your user
 
 `install.sh` detects APT, DNF, Pacman, or Zypper and installs missing system
@@ -40,18 +48,45 @@ sudo dnf install python3 python3-gobject python3-cairo gtk-layer-shell
 The overlay cannot run as a layer-shell surface on X11. Check with
 `printf '%s\n' "$XDG_SESSION_TYPE"` and use a Wayland Plasma session.
 
-CornerNote uses the layer-shell **top** layer so it stays above normal windows
-while panels can appear in front of it. KWin's `wlr-layer-shell` implementation
-has known quirks around fullscreen windows, and behavior may differ between
-Plasma 5.x and 6.x. Check the [KDE bug tracker query for
+### Panels and stacking
+
+On KWin, the layer-shell **top** layer can share its stacking layer with
+Plasma panels. The **bottom** layer stays below panels and regular windows;
+there is no layer-shell level that is guaranteed to sit above app windows but
+below panels. The **Stacking** setting (`"layer"` in the config) picks the
+behavior:
+
+| Setting | Config value | Open note | Collapsed tab |
+| --- | --- | --- | --- |
+| Below panels and windows *(default)* | `bottom` | behind panels and windows | behind panels and windows |
+| Above panels while open | `auto` | above panels and windows | behind panels and windows |
+| Always above panels | `overlay` | above panels and windows | above panels and windows |
+
+If a panel sits on the same screen edge as the note, the collapsed tab is
+hidden behind it with the default setting. Either set **Y offset** to the
+panel's thickness (for example `44` for a top panel, `-44` for a bottom one)
+so the tab peeks out just past the panel, or choose **Always above panels**.
+The default also puts the note behind regular app windows. Choose **Above
+panels while open** to keep it above app windows while expanded.
+
+KWin's `wlr-layer-shell` implementation has known quirks, and behavior may
+differ between Plasma 5.x and 6.x. Check the [KDE bug tracker query for
 `wlr-layer-shell`](https://bugs.kde.org/buglist.cgi?quicksearch=wlr-layer-shell)
 for the current status.
+
+**Krohnkite workaround:** Set CornerNote's **Stacking** mode to **Always above
+panels** (`overlay`).
 
 ## Install
 
 ```sh
+git clone --depth 1 https://github.com/ChecksMc/Cornernote-for-KDE-Plasma.git
+cd Cornernote-for-KDE-Plasma
 ./install.sh
 ```
+
+A shallow clone (`--depth 1`) skips old revisions of the README demo GIF and
+still works with the built-in updater.
 
 The installer installs missing dependencies when it recognizes your package
 manager, then installs a user-level launcher and starts CornerNote through a
@@ -183,8 +218,13 @@ your own Obsidian vault before saving notes.
 Settings are grouped into display and position, vault and files, animation,
 appearance, and updates sections. Expand **Appearance and style** to open the
 embedded editor. It previews the style and offers Plasma colors, Pywal colors, ten
-built-in palettes, editable custom colors, installed font families and font
-size, a local image backdrop, and rounded paper corners. The selected style is
+built-in palettes, editable custom colors (paper, text, accent, borders, editor
+surface, buttons, and button text), installed font families and font size, a
+local image backdrop, and rounded paper corners. With Plasma colors, buttons
+follow the color scheme's button colors; built-in palettes use the editor
+surface color. The **Submit** and **Save** buttons always use the accent
+color. Configs saved before button colors existed keep their custom palette and
+gain matching button colors automatically. The selected style is
 saved to `config.json` and applied to the overlay. By default, colors follow
 Plasma's `kdeglobals` palette, which CornerNote watches for changes. Text
 contrast is corrected when a selected palette would make note text hard to
@@ -212,7 +252,8 @@ The hide delay and slide duration are adjustable; defaults are 700 ms and 320 ms
 - `corner-note` — IPC command-line client and standalone update commands
 - `install.sh` — multi-distro dependency and user installation
 - `uninstall.sh` — removes startup entries and launchers, optionally config
-- `packaging/bundle.py` — builds a distributable `CornerNote.zip`
+- `packaging/bundle.py` — builds a distributable `CornerNote.zip` (sources
+  only; no docs media)
 
 ## Development and troubleshooting
 
@@ -221,10 +262,12 @@ second terminal use `./corner-note toggle`. Inspect service logs with
 `journalctl --user -u cornernote -f`. The socket defaults to
 `$XDG_RUNTIME_DIR/cornernote.sock`, which is private to the login session.
 
-CornerNote does not use the higher overlay layer, allowing panels above it to
-cover the note while it slides. Fullscreen handling still depends on KWin's
-layer-shell policy; the app does not poll KWin state or promise fullscreen
-suppression.
+With **Above panels while open** (`auto`) stacking, the note moves to the
+overlay layer after it finishes sliding open and back to the bottom layer as
+soon as it starts to collapse. The default **Below panels and windows** mode
+stays below both throughout. See [Panels and stacking](#panels-and-stacking).
+Fullscreen handling depends on KWin's layer-shell policy; the app does not poll
+KWin state.
 
 CornerNote listens for systemd-logind sleep and wake notifications. On resume it
 recreates the Wayland layer surface and reapplies the selected screen and
@@ -233,7 +276,22 @@ the overlay continues to run normally but cannot perform this resume recovery.
 
 ## Roadmap / Known Limitations
 
-GTK 3 is in maintenance mode. A port to GTK 4 or Qt is a long-term consideration.
+GTK 3 is in maintenance mode. The roadmap is to move CornerNote to Qt and grow
+desktop support through tested platform integrations:
+
+- **v2.0.0 — Qt and cross-desktop foundations:** port the current KDE interface
+  to Qt, separate desktop/compositor-specific behavior from the core app, and
+  publish a support matrix for tested desktop and window-manager combinations.
+  Add combinations incrementally; a Qt port by itself does not guarantee that
+  every compositor supports CornerNote's overlay behavior.
+- **v2.1.0 — Draft tabs and recovery:** keep multiple independent drafts open
+  and switch between them. Add local autosave and recovery so drafts survive
+  restarts and crashes without silently writing unfinished text into the vault.
+- **v3.0.0 — Edit saved files from History:** turn the read-only history view
+  into an editor for existing Markdown files, with explicit saves and safeguards
+  for files changed outside CornerNote.
+- **v3.1.0 — Autosave edited files:** extend autosave to edits of saved vault
+  notes, building on the file-editing workflow introduced in v3.0.0.
 
 ## Known Issues
 

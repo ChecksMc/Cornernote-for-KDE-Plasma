@@ -26,8 +26,19 @@ Then run the GTK tests from another terminal:
 GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 CORNERNOTE_GTK_TESTS=1 python3 -m pytest tests/test_gtk_ui.py
 ```
 
+Alternatively, run them on a virtual X server (as CI does):
+
+```sh
+CORNERNOTE_GTK_TESTS=1 xvfb-run -a python3 -m pytest tests/test_gtk_ui.py tests/test_update_gtk.py
+```
+
 These tests replace layer-shell calls and exercise GTK sizing, formatting,
-and draft interactions without connecting to the running CornerNote daemon.
+stacking, and draft interactions without connecting to the running CornerNote
+daemon.
+
+Keep `config.example.json` identical to `DEFAULTS` in `src/style.py`; a test
+enforces this. Do not commit large media: keep README images small (the demo
+GIF is about 480 px wide) because every clone downloads them.
 
 The source modules are:
 
@@ -38,6 +49,9 @@ The source modules are:
 - `src/style.py` — configuration, palette loading, and GTK CSS.
 - `src/settings_view.py` — settings controls, monitor choices, and vault folder picker.
 - `src/style_editor.py` — appearance editor and live preview.
+- `src/history.py`, `src/history_view.py` — saved-note discovery and browser.
+- `src/markdown_render.py`, `src/markdown_view.py` — Markdown rendering.
+- `src/updater.py`, `src/update_view.py` — Git updates and their controls.
 
 To contribute, fork the repository, create a branch, make and test your
 changes, and open a pull request against `main`. Describe the change and how

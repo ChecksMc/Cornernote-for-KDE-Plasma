@@ -36,7 +36,8 @@ class GtkUpdateTests(unittest.TestCase):
         # layer-shell compositor or touching the running CornerNote instance.
         layer = patch.multiple(self.app.LayerShell, **dict.fromkeys((
             "init_for_window", "set_namespace", "set_layer", "set_monitor",
-            "set_anchor", "set_margin", "set_keyboard_interactivity"), DEFAULT))
+            "set_anchor", "set_margin", "set_exclusive_zone",
+            "set_keyboard_interactivity"), DEFAULT))
         layer.start()
         self.addCleanup(layer.stop)
         self.window = None

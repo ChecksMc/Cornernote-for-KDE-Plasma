@@ -38,6 +38,7 @@ DEFAULTS: Config = {
     "theme_fallback": "catppuccin_mocha",
     "background_image": "",
     "rounded_corners": False,
+    "layer": "bottom",
     "auto_update": False,
     "custom_palette": {
         "background": "#1e1e2e",
@@ -45,9 +46,28 @@ DEFAULTS: Config = {
         "accent": "#89b4fa",
         "muted": "#6c7086",
         "card": "#313244",
+        "button": "#313244",
+        "button_text": "#cdd6f4",
     },
     "folders": [],
 }
+# Every palette must define the core colors. Optional colors were added later;
+# they fall back to a core color so older configs and themes keep working.
+CORE_PALETTE_KEYS: tuple[str, ...] = (
+    "background",
+    "foreground",
+    "accent",
+    "muted",
+    "card",
+)
+DERIVED_PALETTE_KEYS: dict[str, str] = {
+    "button": "card",
+    "button_text": "foreground",
+}
+PALETTE_KEYS: tuple[str, ...] = (*CORE_PALETTE_KEYS, *DERIVED_PALETTE_KEYS)
+# "auto" raises the note above panels only while it is open, so the collapsed
+# tab tucks behind panels and normal windows instead of covering them.
+LAYER_MODES: tuple[str, ...] = ("bottom", "auto", "overlay")
 PALETTE_LABELS: dict[str, str] = {
     "catppuccin_mocha": "Catppuccin Mocha",
     "catppuccin_latte": "Catppuccin Latte",
@@ -169,6 +189,10 @@ def load_config(path: str | Path | None = None) -> Config:
         config["rounded_corners"] = False
     if not isinstance(config.get("auto_update"), bool):
         config["auto_update"] = False
+    # Older releases used "top" for the user-facing "Below panels" option.
+    # On KWin, TOP shares a layer with panels, so migrate that choice to bottom.
+    if config.get("layer") == "top" or config.get("layer") not in LAYER_MODES:
+        config["layer"] = "bottom"
     for key in ("width", "height", "font_size", "anim_ms"):
         config[key] = int(config[key])
         if config[key] <= 0:
@@ -197,11 +221,18 @@ def load_config(path: str | Path | None = None) -> Config:
     ):
         config["theme_fallback"] = "catppuccin_mocha"
     custom_palette = config.get("custom_palette")
-    if not isinstance(custom_palette, dict) or not all(
-        _valid_color(custom_palette.get(key)) for key in PALETTES["catppuccin_mocha"]
+    if isinstance(custom_palette, dict) and all(
+        _valid_color(custom_palette.get(key)) for key in CORE_PALETTE_KEYS
     ):
-        config["custom_palette"] = dict(PALETTES["catppuccin_mocha"])
-    config["folders"] = list(config.get("folders") or [])
+        config["custom_palette"] = complete_palette(custom_palette)
+    else:
+        config["custom_palette"] = complete_palette(PALETTES["catppuccin_mocha"])
+    folders = config.get("folders")
+    config["folders"] = (
+        [folder for folder in folders if isinstance(folder, str)]
+        if isinstance(folders, list)
+        else []
+    )
     return config
 
 
@@ -248,6 +279,14 @@ def _image_uri(config: Config) -> str | None:
         return None
 
 
+def complete_palette(palette: dict[str, Any]) -> Palette:
+    """Return a palette with every key, deriving optional colors when missing."""
+    completed = {key: str(palette[key]) for key in CORE_PALETTE_KEYS}
+    for key, source in DERIVED_PALETTE_KEYS.items():
+        completed[key] = _valid_color(palette.get(key)) or completed[source]
+    return completed
+
+
 def palette_options() -> tuple[tuple[str, str], ...]:
     """Return stable IDs and display names for built-in color themes."""
     return tuple(PALETTE_LABELS.items())
@@ -272,13 +311,20 @@ def _plasma_palette() -> Palette | None:
                 else fallback
             )
 
-        return {
+        palette = {
             "background": rgb(view, "BackgroundNormal", "#1e1e2e"),
             "foreground": rgb(view, "ForegroundNormal", "#cdd6f4"),
             "accent": rgb(window, "DecorationFocus", "#89b4fa"),
             "muted": rgb(view, "ForegroundInactive", "#6c7086"),
             "card": rgb(view, "BackgroundAlternate", "#313244"),
         }
+        if parser.has_section("Colors:Button"):
+            button = parser["Colors:Button"]
+            palette["button"] = rgb(button, "BackgroundNormal", palette["card"])
+            palette["button_text"] = rgb(
+                button, "ForegroundNormal", palette["foreground"]
+            )
+        return complete_palette(palette)
     except (configparser.Error, OSError, KeyError, ValueError):
         return None
 
@@ -299,21 +345,27 @@ def _pywal_palette() -> Palette | None:
             "card": colors.get("color0"),
         }
         if all(_valid_color(color) for color in palette.values()):
-            return {key: str(color) for key, color in palette.items()}
+            return complete_palette(palette)
     except (OSError, ValueError, TypeError, AttributeError):
         return None
     return None
 
 
+def builtin_palette(palette_id: str | None) -> Palette:
+    """Return a complete copy of a built-in palette, or the default one."""
+    return complete_palette(PALETTES.get(palette_id or "", PALETTES["catppuccin_mocha"]))
+
+
 def get_palette(config: Config) -> Palette:
+    """Resolve the configured color source to a complete palette."""
     source = config.get("theme_source", "plasma")
     if source == "custom":
         custom = config.get("custom_palette", {})
         if isinstance(custom, dict) and all(
-            _valid_color(custom.get(key)) for key in PALETTES["catppuccin_mocha"]
+            _valid_color(custom.get(key)) for key in CORE_PALETTE_KEYS
         ):
-            return {key: str(custom[key]) for key in PALETTES["catppuccin_mocha"]}
-        return dict(PALETTES[config.get("theme_fallback", "catppuccin_mocha")])
+            return complete_palette(custom)
+        return builtin_palette(config.get("theme_fallback"))
     order: tuple[Callable[[], Palette | None], ...] = {
         "plasma": (_plasma_palette, _pywal_palette),
         "pywal": (_pywal_palette, _plasma_palette),
@@ -323,9 +375,7 @@ def get_palette(config: Config) -> Palette:
         palette = loader()
         if palette:
             return palette
-    return dict(
-        PALETTES.get(config.get("theme_fallback"), PALETTES["catppuccin_mocha"])
-    )
+    return builtin_palette(config.get("theme_fallback"))
 
 
 def _contrast_color(color: str, background: str) -> str:
@@ -348,16 +398,40 @@ def _contrast_color(color: str, background: str) -> str:
         return color
 
 
-def build_css(config: Config) -> str:
-    palette = get_palette(config)
-    palette = dict(palette)
+def _style_tokens(config: Config) -> tuple[Palette, str, int, str]:
+    """Return the legible palette, safe font name, size, and radius for CSS."""
+    palette = dict(get_palette(config))
     palette["foreground"] = _contrast_color(palette["foreground"], palette["card"])
-    font = str(config.get("font_family", "Monospace"))
+    palette["button_text"] = _contrast_color(palette["button_text"], palette["button"])
     font = "".join(
-        character for character in font if character.isalnum() or character in " _-"
+        character
+        for character in str(config.get("font_family", "Monospace"))
+        if character.isalnum() or character in " _-"
     )
     size = int(config.get("font_size", 11))
     radius = "8px" if config.get("rounded_corners", False) else "0"
+    return palette, font or "Monospace", size, radius
+
+
+def _button_css(selector: str, palette: Palette) -> str:
+    """Style ordinary buttons, including combo and spin buttons, from the palette."""
+    return f"""
+{selector} {{ background-color: {palette['button']}; background-image: none;
+  color: {palette['button_text']}; border: 2px solid {palette['muted']}; border-radius: 0;
+  box-shadow: none; text-shadow: none; -gtk-icon-shadow: none; }}
+{selector} label {{ color: {palette['button_text']}; }}
+{selector}:hover {{ background-color: mix({palette['button']}, {palette['accent']}, 0.2); }}
+{selector}:active, {selector}:checked {{ background-color: {palette['accent']};
+  color: {palette['background']}; border-color: {palette['accent']}; }}
+{selector}:active label, {selector}:checked label {{ color: {palette['background']}; }}
+{selector}:disabled {{ background-color: {palette['button']}; color: alpha({palette['button_text']}, 0.45); }}
+{selector}:disabled label {{ color: alpha({palette['button_text']}, 0.45); }}
+"""
+
+
+def build_css(config: Config) -> str:
+    """Build the overlay stylesheet from the active palette and appearance."""
+    palette, font, size, radius = _style_tokens(config)
     texture = (
         f"linear-gradient(45deg, alpha({palette['foreground']}, 0.025) 25%, transparent 25%, "
         f"transparent 75%, alpha({palette['foreground']}, 0.025) 75%)"
@@ -369,8 +443,8 @@ def build_css(config: Config) -> str:
     image_positions = "0 0, center" if image_uri else "0 0"
     return f"""
 window, .corner-note-root {{ background-color: {palette['background']}; color: {palette['foreground']};
-  font-family: "{font or 'Monospace'}", monospace; font-size: {size}px; border-radius: {radius}; }}
-.corner-note-root, .corner-note-root * {{ font-family: "{font or 'Monospace'}", monospace; }}
+  font-family: "{font}", monospace; font-size: {size}px; border-radius: {radius}; }}
+.corner-note-root, .corner-note-root * {{ font-family: "{font}", monospace; }}
 .corner-note-root {{ border: 3px solid {palette['muted']}; padding: 5px; border-radius: {radius};
   background-image: {images}; background-size: {image_sizes}; background-repeat: {image_repeats};
   background-position: {image_positions}; }}
@@ -381,8 +455,11 @@ window, .corner-note-root {{ background-color: {palette['background']}; color: {
 .cn-title, .cn-date-entry, entry, entry text {{ color: {palette['foreground']}; background-color: {palette['card']}; border: 2px solid {palette['muted']}; border-radius: 0; box-shadow: none; padding: 5px; caret-color: {palette['accent']}; }}
 .cn-title {{ font-weight: bold; font-size: {size + 2}px; }}
 .cn-content, .cn-content text, textview, textview text {{ color: {palette['foreground']}; background-color: {palette['card']}; caret-color: {palette['accent']}; }}
+{_button_css(".corner-note-root button", palette)}
 .cn-folder, .cn-folder menu, .cn-folder menuitem {{ color: {palette['foreground']}; background-color: {palette['card']}; }}
-.cn-save {{ background-color: {palette['accent']}; color: {palette['background']}; border: 2px solid {palette['foreground']}; border-radius: 0; font-weight: bold; }}
+.corner-note-root button.cn-save {{ background-color: {palette['accent']}; color: {palette['background']}; border: 2px solid {palette['foreground']}; border-radius: 0; font-weight: bold; }}
+.corner-note-root button.cn-save label {{ color: {palette['background']}; }}
+.corner-note-root button.cn-save:hover {{ background-color: mix({palette['accent']}, {palette['foreground']}, 0.15); }}
 .cn-muted {{ color: {palette['muted']}; }}
 .cn-dialog {{ background-color: {palette['card']}; border: 2px dashed {palette['accent']}; padding: 5px; }}
 .cn-status {{ color: {palette['accent']}; padding: 2px 5px; }}
@@ -392,25 +469,21 @@ window, .corner-note-root {{ background-color: {palette['background']}; color: {
 
 def build_preview_css(config: Config) -> str:
     """Build uniquely scoped styles for the standalone theme preview."""
-    palette = dict(get_palette(config))
-    palette["foreground"] = _contrast_color(palette["foreground"], palette["card"])
-    font = str(config.get("font_family", "Monospace"))
-    font = "".join(
-        character for character in font if character.isalnum() or character in " _-"
-    )
-    size = int(config.get("font_size", 11))
-    radius = "8px" if config.get("rounded_corners", False) else "0"
+    palette, font, size, radius = _style_tokens(config)
     image_uri = _image_uri(config)
     background = f'url("{image_uri}")' if image_uri else "none"
     return f"""
-.cn-style-preview, .cn-style-preview * {{ font-family: "{font or 'Monospace'}", monospace; }}
+.cn-style-preview, .cn-style-preview * {{ font-family: "{font}", monospace; }}
 .cn-style-preview {{ background-color: {palette['background']}; background-image: {background};
   background-size: cover; background-position: center; color: {palette['foreground']};
-  font-family: "{font or 'Monospace'}", monospace; font-size: {size}px;
+  font-family: "{font}", monospace; font-size: {size}px;
   border: 3px solid {palette['muted']}; border-radius: {radius}; }}
 .cn-style-card {{ background-color: {palette['card']}; color: {palette['foreground']};
   border: 2px solid {palette['muted']}; border-radius: {radius}; }}
 .cn-style-accent {{ color: {palette['accent']}; font-weight: bold; }}
-.cn-style-apply {{ background-color: {palette['accent']}; color: {palette['background']};
-  border: 2px solid {palette['foreground']}; border-radius: 0; font-weight: bold; }}
+{_button_css(".cn-style-preview button", palette)}
+.cn-style-preview button.cn-style-primary, button.cn-style-apply {{ background-color: {palette['accent']};
+  color: {palette['background']}; border: 2px solid {palette['foreground']}; border-radius: 0;
+  font-weight: bold; }}
+.cn-style-preview button.cn-style-primary label, button.cn-style-apply label {{ color: {palette['background']}; }}
 """

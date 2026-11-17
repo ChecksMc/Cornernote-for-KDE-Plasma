@@ -36,8 +36,9 @@ class GtkUiTests(unittest.TestCase):
         # layer-shell compositor or touching the running CornerNote instance.
         layer = patch.multiple(self.app.LayerShell, **dict.fromkeys((
             "init_for_window", "set_namespace", "set_layer", "set_monitor",
-            "set_anchor", "set_margin", "set_keyboard_interactivity"), DEFAULT))
-        layer.start()
+            "set_anchor", "set_margin", "set_exclusive_zone",
+            "set_keyboard_interactivity"), DEFAULT))
+        self.layer_mocks = layer.start()
         self.addCleanup(layer.stop)
         self.window = None
         self.addCleanup(self.close_window)
@@ -65,6 +66,47 @@ class GtkUiTests(unittest.TestCase):
         self.window = self.app.CornerNote(config)
         self.settle()
         return self.window
+
+    def test_layer_surface_reserves_no_space_and_starts_below_panels(self):
+        self.make_window()
+        self.layer_mocks["set_layer"].assert_called_once_with(
+            self.window, self.app.LayerShell.Layer.BOTTOM
+        )
+        self.layer_mocks["set_exclusive_zone"].assert_called_once_with(
+            self.window, 0
+        )
+
+    def test_auto_stacking_raises_above_panels_only_while_open(self):
+        window = self.make_window(layer="auto")
+        layers = self.app.LayerShell.Layer
+        set_layer = self.layer_mocks["set_layer"]
+        # Finish animations immediately; margins are not under test here.
+        with patch.object(window, "_animate_to",
+                          side_effect=lambda _target, on_done=None:
+                          on_done and on_done()):
+            set_layer.reset_mock()
+            window.expand()
+            set_layer.assert_called_once_with(window, layers.OVERLAY)
+            set_layer.reset_mock()
+            window.collapse()
+            set_layer.assert_called_once_with(window, layers.BOTTOM)
+
+    def test_fixed_stacking_modes_do_not_change_on_expand(self):
+        layers = self.app.LayerShell.Layer
+        for mode, layer in (("overlay", layers.OVERLAY), ("bottom", layers.BOTTOM)):
+            with self.subTest(layer=mode):
+                window = self.make_window(layer=mode)
+                set_layer = self.layer_mocks["set_layer"]
+                set_layer.assert_called_once_with(window, layer)
+                with patch.object(window, "_animate_to",
+                                  side_effect=lambda _target, on_done=None:
+                                  on_done and on_done()):
+                    window.expand()
+                    window.collapse()
+                set_layer.assert_called_once_with(window, layer)
+                self.close_window()
+                self.window = None
+                set_layer.reset_mock()
 
     def wait_for(self, predicate):
         deadline = time.monotonic() + 4

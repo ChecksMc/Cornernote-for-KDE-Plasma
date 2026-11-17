@@ -1,5 +1,20 @@
 # Unreleased
 
+## Fixed
+
+- The default **Stacking** mode (`"layer"`) keeps the note below Plasma panels
+  and regular windows. **Above panels while open** and **Always above panels**
+  remain available as options. Older saved `"top"` values are migrated to the
+  corrected `"bottom"` layer.
+- Buttons now follow the note's colors instead of the system GTK theme. Custom
+  palettes gain **Buttons** and **Button text** colors (#12); Plasma colors use
+  the scheme's button colors. Existing custom palettes are kept.
+- The README demo GIF was reduced from 13 MB to under 4 MB, and the `docs/`
+  folder is excluded from GitHub source archives and the release ZIP (#11).
+- The installer quotes paths containing spaces, no longer changes file modes
+  Git tracks (which blocked the built-in updater), and reminds you to restart
+  an already-running service.
+
 ## Added
 
 - An **Updates** settings section with manual checks and installation, plus
