@@ -2,11 +2,9 @@
 
 ## Fixed
 
-- The note no longer opens underneath Plasma panels. A new **Stacking**
-  setting (`"layer"`) defaults to raising the note above panels while it is
-  open and tucking the collapsed tab behind panels and fullscreen windows;
-  **Always above panels** and the previous **Below panels** behavior are also
-  available.
+- The default **Stacking** mode (`"layer"`) keeps the note below Plasma panels
+  both while open and collapsed. **Above panels while open** and **Always above
+  panels** remain available as options.
 - Buttons now follow the note's colors instead of the system GTK theme. Custom
   palettes gain **Buttons** and **Button text** colors (#12); Plasma colors use
   the scheme's button colors. Existing custom palettes are kept.

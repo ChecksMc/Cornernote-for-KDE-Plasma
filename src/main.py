@@ -122,7 +122,7 @@ class CornerNote(Gtk.Window):
         raises the note only while it is open, so the collapsed tab never
         covers panels or fullscreen applications.
         """
-        mode = self.config.get("layer", "auto")
+        mode = self.config.get("layer", "top")
         if mode == "overlay" or (mode == "auto" and self.expanded):
             return LayerShell.Layer.OVERLAY
         return LayerShell.Layer.TOP

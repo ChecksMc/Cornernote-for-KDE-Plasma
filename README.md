@@ -48,9 +48,9 @@ fullscreen windows, and surfaces on the **overlay** layer above them. The
 
 | Setting | Config value | Open note | Collapsed tab |
 | --- | --- | --- | --- |
-| Above panels while open *(default)* | `auto` | above panels | behind panels and fullscreen windows |
+| Below panels *(default)* | `top` | behind panels | behind panels |
+| Above panels while open | `auto` | above panels | behind panels and fullscreen windows |
 | Always above panels | `overlay` | above panels | above panels and fullscreen windows |
-| Below panels | `top` | behind panels | behind panels |
 
 If a panel sits on the same screen edge as the note, the collapsed tab is
 hidden behind it with the default setting. Either set **Y offset** to the
@@ -249,11 +249,11 @@ second terminal use `./corner-note toggle`. Inspect service logs with
 `journalctl --user -u cornernote -f`. The socket defaults to
 `$XDG_RUNTIME_DIR/cornernote.sock`, which is private to the login session.
 
-With the default stacking, the note moves to the overlay layer only after it
-finishes sliding open and back to the top layer as soon as it starts to
-collapse, so it emerges from behind a panel instead of sliding over it. See
-[Panels and stacking](#panels-and-stacking). Fullscreen handling depends on
-KWin's layer-shell policy; the app does not poll KWin state.
+With **Above panels while open** (`auto`) stacking, the note moves to the
+overlay layer after it finishes sliding open and back to the top layer as soon
+as it starts to collapse. The default **Below panels** mode stays below panels
+throughout. See [Panels and stacking](#panels-and-stacking). Fullscreen
+handling depends on KWin's layer-shell policy; the app does not poll KWin state.
 
 CornerNote listens for systemd-logind sleep and wake notifications. On resume it
 recreates the Wayland layer surface and reapplies the selected screen and

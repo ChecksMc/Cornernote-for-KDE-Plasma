@@ -64,9 +64,9 @@ class SettingsPage(Gtk.Box):
                     "layer",
                     "Stacking",
                     (
+                        ("top", "Below panels (default)"),
                         ("auto", "Above panels while open"),
                         ("overlay", "Always above panels"),
-                        ("top", "Below panels"),
                     ),
                 ),
             )
@@ -205,7 +205,7 @@ class SettingsPage(Gtk.Box):
         fields["position_vertical"].set_active_id(
             config.get("position_vertical", "top")
         )
-        fields["layer"].set_active_id(config.get("layer", "auto"))
+        fields["layer"].set_active_id(config.get("layer", "top"))
         fields["offset_x"].set_value(config.get("offset_x", 0))
         fields["offset_y"].set_value(config.get("offset_y", 0))
         fields["width"].set_value(config["width"])
@@ -239,7 +239,7 @@ class SettingsPage(Gtk.Box):
         updated["position_vertical"] = (
             fields["position_vertical"].get_active_id() or "top"
         )
-        updated["layer"] = fields["layer"].get_active_id() or "auto"
+        updated["layer"] = fields["layer"].get_active_id() or "top"
         updated["auto_update"] = self.update_panel.auto_install.get_active()
         updated["monitor"] = fields["monitor"].get_active_id() or "primary"
         return updated
