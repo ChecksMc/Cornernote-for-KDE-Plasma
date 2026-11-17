@@ -38,7 +38,7 @@ DEFAULTS: Config = {
     "theme_fallback": "catppuccin_mocha",
     "background_image": "",
     "rounded_corners": False,
-    "layer": "top",
+    "layer": "bottom",
     "auto_update": False,
     "custom_palette": {
         "background": "#1e1e2e",
@@ -66,8 +66,8 @@ DERIVED_PALETTE_KEYS: dict[str, str] = {
 }
 PALETTE_KEYS: tuple[str, ...] = (*CORE_PALETTE_KEYS, *DERIVED_PALETTE_KEYS)
 # "auto" raises the note above panels only while it is open, so the collapsed
-# tab tucks behind panels and fullscreen windows instead of covering them.
-LAYER_MODES: tuple[str, ...] = ("top", "auto", "overlay")
+# tab tucks behind panels and normal windows instead of covering them.
+LAYER_MODES: tuple[str, ...] = ("bottom", "auto", "overlay")
 PALETTE_LABELS: dict[str, str] = {
     "catppuccin_mocha": "Catppuccin Mocha",
     "catppuccin_latte": "Catppuccin Latte",
@@ -189,8 +189,10 @@ def load_config(path: str | Path | None = None) -> Config:
         config["rounded_corners"] = False
     if not isinstance(config.get("auto_update"), bool):
         config["auto_update"] = False
-    if config.get("layer") not in LAYER_MODES:
-        config["layer"] = "top"
+    # Older releases used "top" for the user-facing "Below panels" option.
+    # On KWin, TOP shares a layer with panels, so migrate that choice to bottom.
+    if config.get("layer") == "top" or config.get("layer") not in LAYER_MODES:
+        config["layer"] = "bottom"
     for key in ("width", "height", "font_size", "anim_ms"):
         config[key] = int(config[key])
         if config[key] <= 0:

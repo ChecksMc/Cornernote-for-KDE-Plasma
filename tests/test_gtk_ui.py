@@ -70,7 +70,7 @@ class GtkUiTests(unittest.TestCase):
     def test_layer_surface_reserves_no_space_and_starts_below_panels(self):
         self.make_window()
         self.layer_mocks["set_layer"].assert_called_once_with(
-            self.window, self.app.LayerShell.Layer.TOP
+            self.window, self.app.LayerShell.Layer.BOTTOM
         )
         self.layer_mocks["set_exclusive_zone"].assert_called_once_with(
             self.window, 0
@@ -89,11 +89,11 @@ class GtkUiTests(unittest.TestCase):
             set_layer.assert_called_once_with(window, layers.OVERLAY)
             set_layer.reset_mock()
             window.collapse()
-            set_layer.assert_called_once_with(window, layers.TOP)
+            set_layer.assert_called_once_with(window, layers.BOTTOM)
 
     def test_fixed_stacking_modes_do_not_change_on_expand(self):
         layers = self.app.LayerShell.Layer
-        for mode, layer in (("overlay", layers.OVERLAY), ("top", layers.TOP)):
+        for mode, layer in (("overlay", layers.OVERLAY), ("bottom", layers.BOTTOM)):
             with self.subTest(layer=mode):
                 window = self.make_window(layer=mode)
                 set_layer = self.layer_mocks["set_layer"]

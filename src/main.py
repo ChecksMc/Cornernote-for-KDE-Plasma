@@ -117,15 +117,14 @@ class CornerNote(Gtk.Window):
     def _desired_layer(self) -> Any:
         """Return the layer for the configured stacking mode and open state.
 
-        KWin stacks layer-shell ``TOP`` surfaces below Plasma panels (and below
-        fullscreen windows) and ``OVERLAY`` surfaces above them. ``auto``
-        raises the note only while it is open, so the collapsed tab never
-        covers panels or fullscreen applications.
+        On KWin, ``TOP`` can share its layer with Plasma panels. ``BOTTOM``
+        reliably stays below panels, but also below regular application windows.
+        ``auto`` raises the note to ``OVERLAY`` only while it is open.
         """
-        mode = self.config.get("layer", "top")
+        mode = self.config.get("layer", "bottom")
         if mode == "overlay" or (mode == "auto" and self.expanded):
             return LayerShell.Layer.OVERLAY
-        return LayerShell.Layer.TOP
+        return LayerShell.Layer.BOTTOM
 
     def _sync_layer(self) -> None:
         """Apply the desired stacking layer when it differs from the current one."""

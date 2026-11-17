@@ -20,7 +20,7 @@
   "theme_fallback": "catppuccin_mocha",
   "background_image": "",
   "rounded_corners": false,
-  "layer": "top",
+  "layer": "bottom",
   "auto_update": false,
   "custom_palette": {
     "background": "#1e1e2e",

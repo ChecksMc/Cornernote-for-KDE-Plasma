@@ -83,12 +83,13 @@ class ButtonColorTests(ConfigFileTestCase):
 
 
 class LayerConfigTests(ConfigFileTestCase):
-    def test_stacking_defaults_below_panels_and_rejects_unknown_values(self):
-        self.assertEqual(style.load_config(self.path)["layer"], "top")
-        for value in ("auto", "overlay", "top"):
+    def test_stacking_defaults_below_panels_and_migrates_legacy_values(self):
+        self.assertEqual(style.load_config(self.path)["layer"], "bottom")
+        for value in ("bottom", "auto", "overlay"):
             self.assertEqual(self.load({"layer": value})["layer"], value)
-        for value in ("bottom", 3, None):
-            self.assertEqual(self.load({"layer": value})["layer"], "top")
+        self.assertEqual(self.load({"layer": "top"})["layer"], "bottom")
+        for value in ("below", 3, None):
+            self.assertEqual(self.load({"layer": value})["layer"], "bottom")
 
     def test_folders_ignore_non_list_values(self):
         self.assertEqual(self.load({"folders": "Work"})["folders"], [])

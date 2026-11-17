@@ -42,22 +42,24 @@ The overlay cannot run as a layer-shell surface on X11. Check with
 
 ### Panels and stacking
 
-KWin draws layer-shell surfaces on the **top** layer *below* Plasma panels and
-fullscreen windows, and surfaces on the **overlay** layer above them. The
-**Stacking** setting (`"layer"` in the config) picks the behavior:
+On KWin, the layer-shell **top** layer can share its stacking layer with
+Plasma panels. The **bottom** layer stays below panels and regular windows;
+there is no layer-shell level that is guaranteed to sit above app windows but
+below panels. The **Stacking** setting (`"layer"` in the config) picks the
+behavior:
 
 | Setting | Config value | Open note | Collapsed tab |
 | --- | --- | --- | --- |
-| Below panels *(default)* | `top` | behind panels | behind panels |
-| Above panels while open | `auto` | above panels | behind panels and fullscreen windows |
-| Always above panels | `overlay` | above panels | above panels and fullscreen windows |
+| Below panels and windows *(default)* | `bottom` | behind panels and windows | behind panels and windows |
+| Above panels while open | `auto` | above panels and windows | behind panels and windows |
+| Always above panels | `overlay` | above panels and windows | above panels and windows |
 
 If a panel sits on the same screen edge as the note, the collapsed tab is
 hidden behind it with the default setting. Either set **Y offset** to the
 panel's thickness (for example `44` for a top panel, `-44` for a bottom one)
 so the tab peeks out just past the panel, or choose **Always above panels**.
-Keyboard shortcuts open the note above panels in every mode except
-**Below panels**.
+The default also puts the note behind regular app windows. Choose **Above
+panels while open** to keep it above app windows while expanded.
 
 KWin's `wlr-layer-shell` implementation has known quirks, and behavior may
 differ between Plasma 5.x and 6.x. Check the [KDE bug tracker query for
@@ -250,10 +252,11 @@ second terminal use `./corner-note toggle`. Inspect service logs with
 `$XDG_RUNTIME_DIR/cornernote.sock`, which is private to the login session.
 
 With **Above panels while open** (`auto`) stacking, the note moves to the
-overlay layer after it finishes sliding open and back to the top layer as soon
-as it starts to collapse. The default **Below panels** mode stays below panels
-throughout. See [Panels and stacking](#panels-and-stacking). Fullscreen
-handling depends on KWin's layer-shell policy; the app does not poll KWin state.
+overlay layer after it finishes sliding open and back to the bottom layer as
+soon as it starts to collapse. The default **Below panels and windows** mode
+stays below both throughout. See [Panels and stacking](#panels-and-stacking).
+Fullscreen handling depends on KWin's layer-shell policy; the app does not poll
+KWin state.
 
 CornerNote listens for systemd-logind sleep and wake notifications. On resume it
 recreates the Wayland layer surface and reapplies the selected screen and
