@@ -399,9 +399,8 @@ def _contrast_color(color: str, background: str) -> str:
 
 
 def _style_tokens(config: Config) -> tuple[Palette, str, int, str]:
-    """Return the legible palette, safe font name, size, and radius for CSS."""
+    """Return the selected palette, safe font name, size, and radius for CSS."""
     palette = dict(get_palette(config))
-    palette["foreground"] = _contrast_color(palette["foreground"], palette["card"])
     palette["button_text"] = _contrast_color(palette["button_text"], palette["button"])
     font = "".join(
         character
