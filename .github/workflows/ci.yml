@@ -14,15 +14,6 @@ on:
       - '.github/workflows/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'tests/**'
-      - 'packaging/**'
-      - '*.sh'
-      - 'corner-note'
-      - 'config.example.json'
-      - 'cornernote.desktop'
-      - '.github/workflows/**'
   workflow_dispatch:
 
 jobs:
