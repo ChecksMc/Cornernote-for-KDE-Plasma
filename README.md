@@ -292,6 +292,8 @@ desktop support through tested platform integrations:
   for files changed outside CornerNote.
 - **v3.1.0 — Autosave edited files:** extend autosave to edits of saved vault
   notes, building on the file-editing workflow introduced in v3.0.0.
+- **v4.0.0 — Optional Focus mode:** add a focus timer in the top bar, a
+  lightweight to-do list, and a compact calendar view for dated tasks.
 
 ## Known Issues
 

@@ -20,7 +20,7 @@ from style import (
 
 COLOR_FIELDS: tuple[tuple[str, str], ...] = (
     ("background", "Paper"),
-    ("foreground", "Text"),
+    ("foreground", "Text color"),
     ("accent", "Accent"),
     ("muted", "Border and labels"),
     ("card", "Editor surface"),
@@ -89,6 +89,10 @@ class StyleEditor(Gtk.Box):
             color_button = Gtk.ColorButton()
             color_button.set_use_alpha(False)
             color_button.set_title(label)
+            if key == "foreground":
+                color_button.set_tooltip_text(
+                    "Choose the color used for note titles and body text."
+                )
             color_button.connect("color-set", self._on_color_changed)
             self.color_buttons[key] = color_button
             self._add_control(grid, row, label, color_button)
